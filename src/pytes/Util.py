@@ -1,6 +1,74 @@
 import numpy as np
+import pyfits as pf
+import time
 from struct import unpack
 from Filter import median_filter
+
+def sigma2fwhm(sigma):
+    """
+    Convert sigma to width (FWHM)
+    
+    Parameter:
+        sigma:  sigma
+    
+    Return (fwhm)
+        fwhm:   fwhm
+    """
+    
+    return 2*sigma*np.sqrt(2*np.log(2))
+
+def savefits(data, filename, sps=1e6, bits=14, noise=False):
+    """
+    Save pulse/noise to FITS file
+    """
+    
+    # Vectorized int
+    vint = np.vectorize(int)
+    
+    # Prepare data
+    data = vint(np.array(data)*2**bits)
+    
+    # Column Name
+    if noise:
+    	colname = 'NoiseRec'
+    else:
+    	colname = 'PulseRec'
+        
+    # Columns
+    col_t = pf.Column(name='TIME', format='1D', unit='s', array=np.zeros(data.shape[0], dtype=int))
+    col_data = pf.Column(name=colname, format='%dI' % data.shape[1], unit='V', array=data)
+    
+    cols = pf.ColDefs([col_t, col_data])
+    tbhdu = pf.new_table(cols)
+    
+    # Name of extension
+    exthdr = tbhdu.header
+    exthdr.update('EXTNAME', 'Record', 'name of this binary table extension')
+    exthdr.update('EXTVER', 1, 'extension version number')
+    
+    # Add more attributes
+    exthdr.update('TSCAL2', 1.0/2**14, '[V/ch]')
+    exthdr.update('TZERO2', 0., '[V]')
+    exthdr.update('THSCL2', sps**-1, '[s/bin] horizontal resolution of record')
+    exthdr.update('THZER2', 0, '[s] horizontal offset of record')
+    exthdr.update('THSAM2', data.shape[1], 'sample number of record')
+    exthdr.update('THUNI2', 's', 'physical unit of sampling step of record')
+    exthdr.update('TRMIN2', 2**14, '[channel] minimum number of each sample')
+    exthdr.update('TRMAX2', 0, '[channel] maximum number of each sample')
+    exthdr.update('TRBIN2', 8, '[channel] default bin number of each sample')
+    
+    # More attributes
+    exthdr.update('TSTART', 0, 'start time of experiment in total second')
+    exthdr.update('TSTOP', 0, 'end time of experiment in total second')
+    exthdr.update('TEND', 0, 'end time of experiment (obsolete)')
+    exthdr.update('DATE', time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime()), 'file creation date (UT)')
+    
+    # We anyway need Primary HDU
+    hdu = pf.PrimaryHDU()
+    
+    # Write to FITS
+    thdulist = pf.HDUList([hdu, tbhdu])
+    thdulist.writeto(filename)
 
 def yopen(filenumber, summary=False, nf=None, tmin=None, tmax=None):
     """
