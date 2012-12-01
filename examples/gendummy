@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+
+from numpy import *
+from pytes import *
+
+def main(N, fwhm, noise, bits, sps, t, prefix):
+    
+    print "Simulating %d pulses/noises. This takes bit long time..." % N
+    p, n = Simulation.simulate(N, Util.fwhm2sigma(fwhm), noise=noise, sps=sps, t=t)
+    
+    print "Saving FITS files."
+    Util.savefits(p, prefix+"p.fits", sps=sps, bits=bits)
+    Util.savefits(n, prefix+"n.fits", sps=sps, bits=bits, noise=True)
+    
+    return 0
+
+def usage(prog, N, prefix, noise, fwhm, bits, sps, t):
+    print """Usage: %s [options]
+
+Options:
+    -c counts
+        Desired number of pulses and noises. (Default: %d)
+    -p prefix
+        Filename prefix for pulse and noise FITS file. (Default: %s)
+    -n noise
+        White noise level in V/srHz. (Default: %.2e V/srHz)
+    -e fwhm
+        Energy resolution of line model in eV. (Default: %.2f eV)
+    -b bits
+        Desired number of bits for virtual ADC. (Default: %d bits)
+    -s sps
+        Sampling per second for dummy pulse/noise. (Default: %.2e sps)
+    -t time
+        Sampling time for dummy pulse/noise. (Default: %.2e s)
+    -h
+        Show this usage.""" % (prog, N, prefix, noise, fwhm, bits, sps, t)
+
+if __name__ == '__main__':
+    
+    import sys, getopt
+    
+    opts, params = getopt.getopt(sys.argv[1:], 'hc:p:n:e:b:s:t:')
+    
+    # Initialize
+    N = 1000
+    prefix = "dummy"
+    noise = 3e-6
+    fwhm = 2
+    bits = 14
+    sps = 1e6
+    t = 2e-3
+    
+    for o, a in opts:
+        if o == "-c":
+            N = int(a)
+        if o == "-p":
+            prefix = a
+        if o == "-n":
+            noise = float(a)
+        if o == "-e":
+            fwhm = float(a)
+        if o == "-b":
+            bits = int(a)
+        if o == "-s":
+            sps = float(a)
+        if o == "-t":
+            t = float(a)
+        if o == "-h":
+            usage(sys.argv[0], N, prefix, noise, fwhm, bits, sps, t)
+            exit()
+ 
+    main(N, fwhm, noise, bits, sps, t, prefix)
