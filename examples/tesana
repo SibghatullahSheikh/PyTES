@@ -65,10 +65,9 @@ def fit(data, nbin, line, session):
     bins = histogram(data, bins=nbin)
     E = linspace(bins.min(), bins.max(), 1000)
     plot_model(E, dE, A, sigma, line)
-    r = array([sigma, sigma_error]) * 2 * sqrt(2*log(2))
     savefig("%s-%s.pdf" % (session, line))
 
-    print "%s: %.2f +/- %.2f eV" % (line, r[0], r[1])
+    print "%s: %.2f +/- %.2f eV" % (line, Util.sigma2fwhm(sigma), Util.sigma2fwhm(sigma_error))
 
 def plot_model(E, dE, A, sigma, line):
     
