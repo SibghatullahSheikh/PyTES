@@ -17,6 +17,19 @@ def sigma2fwhm(sigma):
     
     return 2*sigma*np.sqrt(2*np.log(2))
 
+def fwhm2sigma(fwhm):
+    """
+    Convert width (FWHM) to sigma
+    
+    Parameter:
+        fwhm:   fwhm
+    
+    Return (sigma)
+        sigma:  sigma
+    """
+    
+    return fwhm/(2*np.sqrt(2*np.log(2)))
+
 def savefits(data, filename, sps=1e6, bits=14, noise=False):
     """
     Save pulse/noise to FITS file
