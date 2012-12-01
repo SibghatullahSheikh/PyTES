@@ -1,6 +1,6 @@
 import numpy as np
 import pyfits
-from pytes import Analysis, Pulse
+from pytes import Analysis, Pulse, Constants
 
 def random(pdf, N, min, max):
     """
