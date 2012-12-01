@@ -89,17 +89,27 @@ def histogram(data, bins):
 
     return (bins[1:]+bins[:-1])/2
 
+def usage(prog, ka_bins, kb_bins, session):
+    print """Usage: %s [options]
+
+Options:
+    -c cutoff
+        Cut-off bin for template generation (Default: no cut-off)
+    -a bins
+        Desired number of bins for MnKa spectrum. (Default: %d)
+    -b bins
+        Desired number of bins for MnKb spectrum. (Default: %d)
+    --session name
+        Session name used for output files. (Default: %s)
+    -h
+        Show this usage.""" % (prog, ka_bins, kb_bins, session)
+
+
 if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'a:b:c:', ['session='])
-    
-    try:
-        pulse, noise = params
-    except:
-        print("Usage: %s pulsefits noisefits" % sys.argv[0])
-        exit()
+    opts, params = getopt.getopt(sys.argv[1:], 'ha:b:c:', ['session='])
     
     # Initialize
     cutoff = None
@@ -116,5 +126,15 @@ if __name__ == '__main__':
             kb_bins = int(a)
         if o == "--session":
             session = a
- 
+        if o == "-h":
+            usage(sys.argv[0], ka_bins, kb_bins, session)
+            exit()
+
+    try:
+        pulse, noise = params
+    except:
+        usage(sys.argv[0], ka_bins, kb_bins, session)
+        exit()
+    
+    
     main(pulse, noise, cutoff=cutoff, ka_bins=ka_bins, kb_bins=kb_bins, session=session)
