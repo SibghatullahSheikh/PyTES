@@ -28,10 +28,26 @@ def random(pdf, N, min, max):
 
 def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=7000, atom="Mn"):
     """
-    Simulate
+    Generate pulse (Ka and Kb) and noise
+    
+    Parameters (and their default values):
+        N:      desired number of pulses/noises
+        sigma:  sigma of voigt profile
+        noise:  white noise level in V/srHz (Default: 3uV/srHz)
+        sps:    sampling per second (Default: 1Msps)
+        t:      sampling time (Default: 2ms)
+        Emax:   max energy in eV (Default: 7000eV)
+        atom:   atom to simulate (Default: Mn)
+    
+    Return (pulse, noise):
+        pulse:  simulated pulse data (NxM array-like)
+        noise:  simulated noise data (NxM array-like)
+    
+    Note:
+        - pha is 1V at maximum
     """
     
-    # Generate distribution
+    # Simulate Ka and Kb lines
     pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Ka")
     e = random(pdf, int(N*0.9), 0, Emax)
     
@@ -43,7 +59,7 @@ def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=7000, atom="Mn"):
     
     # Generate pulses and noises
     points = int(sps*t)
-    pulse = np.array([ Pulse.dummy(p, points=points, t=t, duty=0.1) +
+    pulse = np.array([ Pulse.dummy(p, points=points, t=t, duty=0.1, talign=np.random.uniform()-0.5) +
                         Pulse.white(var=noise**2, points=points, t=t) for p in pha ])
     
     noise = np.array([ Pulse.white(var=noise**2, points=points, t=t) for p in pha ])
