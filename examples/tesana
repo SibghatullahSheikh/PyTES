@@ -89,7 +89,7 @@ def histogram(data, bins):
     return (bins[1:]+bins[:-1])/2
 
 def usage(prog, ka_bins, kb_bins, session):
-    print """Usage: %s [options]
+    print """Usage: %s [options] pulse.fits noise.fits
 
 Options:
     -c cutoff
