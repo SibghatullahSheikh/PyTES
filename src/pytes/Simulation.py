@@ -49,13 +49,15 @@ def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=7000, atom="Mn"):
     
     # Simulate Ka and Kb lines
     pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Ka")
-    _Emin = np.min(FS[atom+"Ka"][:,0]) - 500
-    _Emax = np.max(FS[atom+"Ka"][:,0]) + 500
+    Ec = np.array(Constants.FS[atom+"Ka"])[:,0]
+    _Emin = np.min(Ec) - 500
+    _Emax = np.max(Ec) + 500
     e = random(pdf, int(N*0.9), _Emin, _Emax)
     
     pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Kb")
-    _Emin = np.min(FS[atom+"Kb"][:,0]) - 500
-    _Emax = np.max(FS[atom+"Kb"][:,0]) + 500
+    Ec = np.array(Constants.FS[atom+"Kb"])[:,0]
+    _Emin = np.min(Ec) - 500
+    _Emax = np.max(Ec) + 500
     e = np.concatenate((e, random(pdf, int(N*0.1), _Emin, _Emax)))
     
     # Convert energy to PHA
