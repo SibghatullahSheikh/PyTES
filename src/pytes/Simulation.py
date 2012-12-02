@@ -26,7 +26,7 @@ def random(pdf, N, min, max):
     
     return valid[:N]
 
-def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=7000, atom="Mn"):
+def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn"):
     """
     Generate pulse (Ka and Kb) and noise
     
@@ -36,7 +36,7 @@ def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=7000, atom="Mn"):
         noise:  white noise level in V/srHz (Default: 3uV/srHz)
         sps:    sampling per second (Default: 1Msps)
         t:      sampling time (Default: 2ms)
-        Emax:   max energy in eV (Default: 7000eV)
+        Emax:   max energy in eV (Default: 10keV)
         atom:   atom to simulate (Default: Mn)
     
     Return (pulse, noise):
@@ -44,30 +44,31 @@ def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=7000, atom="Mn"):
         noise:  simulated noise data (NxM array-like)
     
     Note:
-        - pha is 1V at maximum
+        - pha 1.0 = 10 keV
     """
     
     # Simulate Ka and Kb lines
     pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Ka")
     Ec = np.array(Constants.FS[atom+"Ka"])[:,0]
-    _Emin = np.min(Ec) - 500
-    _Emax = np.max(Ec) + 500
+    _Emin = np.min(Ec) - sigma*500
+    _Emax = np.max(Ec) + sigma*500
     e = random(pdf, int(N*0.9), _Emin, _Emax)
     
     pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Kb")
     Ec = np.array(Constants.FS[atom+"Kb"])[:,0]
-    _Emin = np.min(Ec) - 500
-    _Emax = np.max(Ec) + 500
+    _Emin = np.min(Ec) - sigma*500
+    _Emax = np.max(Ec) + sigma*500
     e = np.concatenate((e, random(pdf, int(N*0.1), _Emin, _Emax)))
     
     # Convert energy to PHA
     pha = e / Emax
     
     # Generate pulses and noises
-    points = int(sps*t)
-    pulse = np.array([ Pulse.dummy(p, points=points, t=t, duty=0.1, talign=np.random.uniform()-0.5) +
-                        Pulse.white(var=noise**2, points=points, t=t) for p in pha ])
+    points = (N, int(sps*t))
+    pulse = Pulse.dummy(pha, points=points, t=t, duty=0.1,
+                        talign=np.random.uniform(size=N)-0.5) + \
+            Pulse.white(var=noise**2, points=points, t=t)
     
-    noise = np.array([ Pulse.white(var=noise**2, points=points, t=t) for p in pha ])
+    noise = Pulse.white(var=noise**2, points=points, t=t)
     
     return pulse, noise
