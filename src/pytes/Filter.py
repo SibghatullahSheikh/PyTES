@@ -107,6 +107,31 @@ def average_pulse(pulse, sigma=3, max_shift=None, **kwargs):
     
     return avg_pulse
 
+def power(data):
+    """
+    Calculate power spectrum
+    
+    Parameter:
+        data:   pulse/noise data (NxM or N array-like)
+    
+    Return (power)
+        power:  calculated power spectrum
+    """
+    
+    data = np.asarray(data)
+    
+    # Real DFT
+    ps = np.abs(np.fft.rfft(data))**2 / data.shape[-1]
+    
+    if data.shape[-1] % 2:
+        # Odd
+        ps[...,1:] *= 2
+    else:
+        # Even
+        ps[...,1:-1] *= 2
+    
+    return ps
+
 def average_noise(noise, sigma=3, **kwargs):
     """
     Calculate averaged noise power
@@ -130,7 +155,7 @@ def average_noise(noise, sigma=3, **kwargs):
     if sigma is not None:
         noise = noise[reduction(noise, sigma, **kwargs)]
 
-    return np.average(np.abs(np.fft.rfft(noise))**2, axis=0)
+    return np.average(power(noise), axis=0)
 
 def generate_template(pulse, noise, cutoff=None, **kwargs):
     """
@@ -170,7 +195,7 @@ def generate_template(pulse, noise, cutoff=None, **kwargs):
     pow_noise = average_noise(noise, **kwargs)
     
     # Calculate S/N ratio
-    sn = np.abs(fourier)/np.sqrt(pow_noise)
+    sn = np.sqrt(power(avg_pulse)/pow_noise)
     
     # Generate template (inverse Real-DFT)
     fourier[0] = 0  # Eliminate DC
