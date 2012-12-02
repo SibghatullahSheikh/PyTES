@@ -39,7 +39,7 @@ def savefits(data, filename, sps=1e6, bits=14, noise=False):
     vint = np.vectorize(int)
     
     # Prepare data
-    data = vint(np.array(data)*2**bits)
+    data = vint(np.array(data)*2**(bits-1))
     
     # Column Name
     if noise:
@@ -60,15 +60,15 @@ def savefits(data, filename, sps=1e6, bits=14, noise=False):
     exthdr.update('EXTVER', 1, 'extension version number')
     
     # Add more attributes
-    exthdr.update('TSCAL2', 1.0/2**14, '[V/ch]')
+    exthdr.update('TSCAL2', 1.0/2**(bits-1), '[V/ch]')
     exthdr.update('TZERO2', 0., '[V]')
     exthdr.update('THSCL2', sps**-1, '[s/bin] horizontal resolution of record')
     exthdr.update('THZER2', 0, '[s] horizontal offset of record')
     exthdr.update('THSAM2', data.shape[1], 'sample number of record')
     exthdr.update('THUNI2', 's', 'physical unit of sampling step of record')
-    exthdr.update('TRMIN2', 2**14, '[channel] minimum number of each sample')
-    exthdr.update('TRMAX2', 0, '[channel] maximum number of each sample')
-    exthdr.update('TRBIN2', 8, '[channel] default bin number of each sample')
+    exthdr.update('TRMIN2', -2**(bits-1)+1, '[channel] minimum number of each sample')
+    exthdr.update('TRMAX2', 2**(bits-1)-1, '[channel] maximum number of each sample')
+    exthdr.update('TRBIN2', 1, '[channel] default bin number of each sample')
     
     # More attributes
     exthdr.update('TSTART', 0, 'start time of experiment in total second')
