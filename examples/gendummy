@@ -6,7 +6,7 @@ from pytes import *
 def main(N, fwhm, noise, bits, sps, t, prefix):
     
     print "Simulating %d pulses/noises. This takes bit long time..." % N
-    p, n = Simulation.simulate(N, Util.fwhm2sigma(fwhm), noise=noise, sps=sps, t=t)
+    p, n = Simulation.simulate(N, fwhm, noise=noise, sps=sps, t=t)
     
     print "Saving FITS files."
     Util.savefits(p, prefix+"p.fits", sps=sps, bits=bits)

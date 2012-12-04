@@ -26,13 +26,13 @@ def random(pdf, N, min, max):
     
     return valid[:N]
 
-def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn"):
+def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn"):
     """
     Generate pulse (Ka and Kb) and noise
     
     Parameters (and their default values):
         N:      desired number of pulses/noises
-        sigma:  sigma of voigt profile
+        width:  width (FWHM) of gaussian (voigt) profile
         noise:  white noise level in V/srHz (Default: 3uV/srHz)
         sps:    sampling per second (Default: 1Msps)
         t:      sampling time (Default: 2ms)
@@ -44,20 +44,20 @@ def simulate(N, sigma, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn"):
         noise:  simulated noise data (NxM array-like)
     
     Note:
-        - pha 1.0 = 10 keV
+        - pha 1.0 = Emax
     """
     
     # Simulate Ka and Kb lines
-    pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Ka")
+    pdf = lambda E: Analysis.line_model(E, width, line=atom+"Ka")
     Ec = np.array(Constants.FS[atom+"Ka"])[:,0]
-    _Emin = np.min(Ec) - sigma*500
-    _Emax = np.max(Ec) + sigma*500
+    _Emin = np.min(Ec) - width*500
+    _Emax = np.max(Ec) + width*500
     e = random(pdf, int(N*0.9), _Emin, _Emax)
     
-    pdf = lambda E: Analysis.line_model(E, sigma, line=atom+"Kb")
+    pdf = lambda E: Analysis.line_model(E, width, line=atom+"Kb")
     Ec = np.array(Constants.FS[atom+"Kb"])[:,0]
-    _Emin = np.min(Ec) - sigma*500
-    _Emax = np.max(Ec) + sigma*500
+    _Emin = np.min(Ec) - width*500
+    _Emax = np.max(Ec) + width*500
     e = np.concatenate((e, random(pdf, int(N*0.1), _Emin, _Emax)))
     
     # Convert energy to PHA

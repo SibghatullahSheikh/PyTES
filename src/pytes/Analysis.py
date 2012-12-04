@@ -120,31 +120,83 @@ def linearity_correction(pha, atom="Mn", sigma=1):
     
     return corrected_pha
 
-def voigt(E, Ec, nw, sigma):
+def voigt(E, Ec, nw, gw):
     """
     Voigt profile
      
     Parameters:
         E:      energy
         Ec:     center energy
-        nw:     natural width
-        sigma:  sigma
+        nw:     natural (lorentzian) width (FWHM)
+        gw:     gaussian width (FWHM)
     
     Return (voigt)
         voigt:  Voigt profile
     """
      
-    z = (E - Ec + 1j*nw) / (sigma*np.sqrt(2))
+    z = (E - Ec + 1j*fwhm2gamma(nw)) / (fwhm2sigma(gw)*np.sqrt(2))
 
-    return wofz(z).real / (sigma*np.sqrt(2*np.pi))
+    return wofz(z).real / (fwhm2sigma(gw)*np.sqrt(2*np.pi))
 
-def line_model(E, sigma, line="MnKa"):
+def sigma2fwhm(sigma):
+    """
+    Convert sigma to width (FWHM)
+    
+    Parameter:
+        sigma:  sigma of gaussian / voigt profile
+    
+    Return (fwhm)
+        fwhm:   width
+    """
+    
+    return 2*sigma*np.sqrt(2*np.log(2))
+
+def fwhm2sigma(fwhm):
+    """
+    Convert width (FWHM) to sigma
+    
+    Parameter:
+        fwhm:   width
+    
+    Return (sigma)
+        sigma:  sigma of gaussian / voigt profile
+    """
+    
+    return fwhm/(2*np.sqrt(2*np.log(2)))
+
+def gamma2fwhm(gamma):
+    """
+    Convert gamma to width (FWHM)
+    
+    Parameter:
+        gamma:  gamma of lorentzian / voigt profile
+    
+    Return (fwhm)
+        fwhm:   width
+    """
+    
+    return gamma*2.0
+
+def fwhm2gamma(fwhm):
+    """
+    Convert width (FWHM) to gamma
+    
+    Parameter:
+        fwhm:   width
+    
+    Return (sigma)
+        gamma:  gamma of lorentzian / voigt profile
+    """
+    
+    return fwhm/2.0
+
+def line_model(E, width, line="MnKa"):
     """
     Line model
     
     Parameters (and their default values):
         E:      energy
-        sigma:  sigma
+        width:  FWHM of gaussian profile
         line:   line (Default: MnKa)
     
     Return (i)
@@ -155,7 +207,7 @@ def line_model(E, sigma, line="MnKa"):
     if not FS.has_key(line):
         raise ValueError("No data for %s" % line)
     
-    return np.array([ p[2] * voigt(E, p[0], p[1], sigma) for p in FS[line] ]).sum(axis=0)
+    return np.array([ p[2] * voigt(E, p[0], p[1], width) for p in FS[line] ]).sum(axis=0)
 
 def fit(pha, bins=40, line="MnKa"):
     """
@@ -171,8 +223,8 @@ def fit(pha, bins=40, line="MnKa"):
         dE_error:       dE error (1-sigma)
         A:              fitted amplitude
         A_error:        amplitude error (1-sigma)
-        sigma:          fitted sigma
-        sigma_error:    sigma error (1-sigma)
+        width:          fitted gaussian width (FWHM)
+        width_error:    width error (1-sigma)
     """
     
     # Sanity check
@@ -184,9 +236,9 @@ def fit(pha, bins=40, line="MnKa"):
     bincenters = (bins[1:]+bins[:-1])/2
     
     # Fit
-    def model(E, dE, A, sigma):
-        return A * line_model(E-dE, sigma, line)
+    def model(E, dE, A, width):
+        return A * line_model(E-dE, width, line)
     
-    popt, pcov = curve_fit(model, bincenters, n, p0=(0, 1, 10))
+    popt, pcov = curve_fit(model, bincenters, n, p0=(0, 1, 5))
     
     return popt[0], np.sqrt(pcov[0][0]), popt[1], np.sqrt(pcov[1][1]), popt[2], np.sqrt(pcov[2][2])

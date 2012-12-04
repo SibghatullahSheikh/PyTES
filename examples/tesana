@@ -58,25 +58,25 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sessio
 
 def fit(data, nbin, line, session):
     # Fit
-    dE, dE_error, A, A_error, sigma, sigma_error = Analysis.fit(data, bins=nbin, line=line)
+    dE, dE_error, A, A_error, width, width_error = Analysis.fit(data, bins=nbin, line=line)
     
     # Draw fitting result
     figure()
     bins = histogram(data, bins=nbin)
     E = linspace(bins.min(), bins.max(), 1000)
-    plot_model(E, dE, A, sigma, line)
+    plot_model(E, dE, A, width, line)
     savefig("%s-%s.pdf" % (session, line))
 
-    print "%s: %.2f +/- %.2f eV" % (line, Util.sigma2fwhm(sigma), Util.sigma2fwhm(sigma_error))
+    print "%s: %.2f +/- %.2f eV" % (line, width, width_error)
 
-def plot_model(E, dE, A, sigma, line):
+def plot_model(E, dE, A, width, line):
     
     # Plot sum
-    plot(E, A*Analysis.line_model(E-dE, sigma, line=line), 'r-')
+    plot(E, A*Analysis.line_model(E-dE, width, line=line), 'r-')
     
     # Plot individuals
     for p in Constants.FS[line]:
-        plot(E, A*p[2]*Analysis.voigt(E-dE, p[0], p[1], sigma), 'b--')
+        plot(E, A*p[2]*Analysis.voigt(E-dE, p[0], p[1], width), 'b--')
 
     xlabel('Energy\quad(eV)')
     ylabel('Normalized Count')
