@@ -280,7 +280,4 @@ def offset(pulse, bins=None):
         else:
             return np.array([ p[:np.correlate(p, [1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,1,1,1,1]).argmax() + 9].mean() for p in pulse ])
     else:
-        if pulse.ndim == 1:
-            return pulse[bins[0]:bins[1]+1].mean()
-        else:
-            return pulse[:,bins[0]:bins[1]+1].mean(axis=1)
+        return pulse[...,bins[0]:bins[1]+1].mean(axis=-1)
