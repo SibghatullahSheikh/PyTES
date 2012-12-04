@@ -148,7 +148,7 @@ def average_noise(noise, sigma=3, **kwargs):
     # Convert to numpy array
     noise = np.asarray(noise)
 
-    if sigma is not None:
+    if sigma is not None or kwargs.has_key('min') or kwargs.has_key('max') or kwargs.has_key('sum'):
         noise = noise[reduction(noise, sigma, **kwargs)]
 
     return np.average(power(noise), axis=0)
