@@ -27,7 +27,7 @@ def ka(pha, sigma=1):
         data:   k-alpha data set
     """
     
-    pha = np.array(pha)
+    pha = np.asarray(pha)
     
     if pha.ndim > 1:
         mask = median_filter(pha[:,0], sigma=sigma)
@@ -48,7 +48,7 @@ def kb(pha, sigma=1):
         data:   k-beta data set
     """
     
-    pha = np.array(pha)
+    pha = np.asarray(pha)
     
     if pha.ndim > 1:
         _pha = pha[:,0]
@@ -107,7 +107,7 @@ def linearity_correction(pha, atom="Mn", sigma=1):
     if not LE.has_key(atom):
         raise ValueError("No data for %s" % atom)
     
-    Mn = np.array(LE[atom])
+    Mn = np.asarray(LE[atom])
     
     # MnKa/MnKb PHA Center
     pha_center = np.array([ ka(pha, sigma=sigma).mean(), kb(pha, sigma=sigma).mean() ])

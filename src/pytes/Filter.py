@@ -40,7 +40,7 @@ def reduction(data, sigma=3, **kwargs):
         mask:   boolean array for indexing filtered data
     """
     
-    data = np.array(data)
+    data = np.asarray(data)
     
     if kwargs.has_key("min"):
         min_mask = (data.min(axis=1) > kwargs["min"][0]) & (data.min(axis=1) < kwargs["min"][1])
@@ -78,11 +78,7 @@ def average_pulse(pulse, sigma=3, max_shift=None, **kwargs):
     """
     
     # if given data is not numpy array, convert them
-    if type(pulse) is np.ndarray:
-        pulse = np.array(pulse)
-    else:
-        # Copy it if it is already numpy array
-        pulse = pulse.copy()
+    pulse = np.asarray(pulse).copy()
     
     # Calculate averaged pulse
     if pulse.ndim == 2:
@@ -150,7 +146,7 @@ def average_noise(noise, sigma=3, **kwargs):
     """
 
     # Convert to numpy array
-    noise = np.array(noise)
+    noise = np.asarray(noise)
 
     if sigma is not None:
         noise = noise[reduction(noise, sigma, **kwargs)]
@@ -226,11 +222,8 @@ def cross_correlate(data1, data2, max_shift=None):
         raise ValueError("data length does not match")
 
     # if given data set is not numpy array, convert them
-    if type(data1) is not np.ndarray:
-        data1 = np.array(data1)
-    
-    if type(data2) is not np.ndarray:
-        data2 = np.array(data2)
+    data1 = np.asarray(data1)
+    data2 = np.asarray(data2)
     
     # Calculate cross correlation
     if max_shift == 0:
@@ -278,7 +271,7 @@ def offset(pulse, bins=None):
         offset: calculated offset level
     """
     
-    pulse = np.array(pulse)
+    pulse = np.asarray(pulse)
     
     if bins is None:
         # Determine end bin for offset calculation (start is always 0)
