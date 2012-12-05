@@ -5,7 +5,7 @@ from numpy import *
 from pytes import *
 import matplotlib
 matplotlib.use( 'Agg' )
-from pylab import figure, plot, hist, xlim, xlabel, ylabel, savefig
+from pylab import figure, plot, hist, xlim, loglog, xlabel, ylabel, savefig
 
 def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, session="Unnamed"):
     
@@ -14,14 +14,50 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sessio
     # Open fits file and get pulse/noise data
     phl = pyfits.open(pulse)
     p = phl[1].data.field(1).copy()
+    dtp = phl[1].header['THSCL2']
+    tp = arange(p.shape[-1]) * dtp
+    
     phl.close()
     
     nhl = pyfits.open(noise)
     n = nhl[1].data.field(1).copy()
+    dtn = phl[1].header['THSCL2']
+    tn = arange(n.shape[-1]) * dtn
     nhl.close()
+    
+    # Plot averaged pulse
+    figure()
+    plot(tp, Filter.average_pulse(p, max_shift=max_shift))
+    xlabel('Time\quad(s)')
+    ylabel('Averaged Pulse\quad(V)')
+    savefig('%s-averagepulse.pdf' % session)
+    
+    # Plot noise spectrum
+    nspec = sqrt(Filter.average_noise(n)*dtn)
+    figure()
+    plot(arange(len(nspec))*(dtn*n.shape[-1])**-1, nspec)
+    loglog()
+    xlabel('Frequency\quad(Hz)')
+    ylabel('Noise\quad(V/$\sqrt{\mathrm{Hz}}$)')
+    savefig('%s-noise.pdf' % session)
     
     # Generate template
     t, sn = Filter.generate_template(p, n, cutoff=cutoff, max_shift=max_shift)
+    
+    # Plot template
+    figure()
+    plot(tp, t)
+    xlabel('Time\quad(s)')
+    ylabel('Template\quad(A.U.)')
+    savefig('%s-template.pdf' % session)
+    
+    # Plot S/N ratio
+    figure()
+    plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn)
+    loglog()
+    xlabel('Frequency\quad(Hz)')
+    ylabel('S/N\quad(/$\sqrt{\mathrm{Hz}}$)')
+    savefig('%s-sn.pdf' % session)
     
     # Calculate baseline resolution
     print "Baseline resolution for 5.9 keV: %.2f eV" % Analysis.baseline(sn)
@@ -108,7 +144,7 @@ if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'ha:b:c:', ['session='])
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:', ['session=', 'help'])
     
     # Initialize
     cutoff = None
@@ -125,7 +161,7 @@ if __name__ == '__main__':
             kb_bins = int(a)
         if o == "--session":
             session = a
-        if o == "-h":
+        if o in ("-h", "-?", "--help"):
             usage(sys.argv[0], ka_bins, kb_bins, session)
             exit()
 
