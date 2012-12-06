@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use( 'Agg' )
 from pylab import figure, plot, hist, xlim, loglog, xlabel, ylabel, savefig
 
-def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, session="Unnamed"):
+def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sigma=2, session="Unnamed"):
     
     print "Session: %s" % session
     
@@ -83,11 +83,11 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sessio
     # Fitting
     
     ## MnKa
-    mnka = Analysis.ka(lc_pha, sigma=2)
+    mnka = Analysis.ka(lc_pha, sigma=sigma)
     fit(mnka, ka_bins, "MnKa", session)
 
     ## MnKb
-    mnkb = Analysis.kb(lc_pha, sigma=2)
+    mnkb = Analysis.kb(lc_pha, sigma=sigma)
     fit(mnkb, kb_bins, "MnKb", session)
     
     return 0
@@ -124,32 +124,35 @@ def histogram(data, bins):
 
     return (bins[1:]+bins[:-1])/2
 
-def usage(prog, ka_bins, kb_bins, session):
+def usage(prog, ka_bins, kb_bins, sigma, session):
     print """Usage: %s [options] pulse.fits noise.fits
 
 Options:
     -c cutoff
         Cut-off bin for template generation (Default: no cut-off)
     -a bins
-        Desired number of bins for MnKa spectrum. (Default: %d)
+        Desired number of bins for MnKa spectrum (Default: %d)
     -b bins
-        Desired number of bins for MnKb spectrum. (Default: %d)
+        Desired number of bins for MnKb spectrum (Default: %d)
+    -s sigmas
+        Sigmas for median filter (Default: %d)
     --session name
-        Session name used for output files. (Default: %s)
+        Session name used for output files (Default: %s)
     -h
-        Show this usage.""" % (prog, ka_bins, kb_bins, session)
+        Show this usage.""" % (prog, ka_bins, kb_bins, sigma, session)
 
 
 if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:', ['session=', 'help'])
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['session=', 'help'])
     
     # Initialize
     cutoff = None
     ka_bins = 40
     kb_bins = 20
+    sigma = 2
     session = "Unnamed"
     
     for o, a in opts:
@@ -159,17 +162,19 @@ if __name__ == '__main__':
             ka_bins = int(a)
         if o == "-b":
             kb_bins = int(a)
+        if o == "-s":
+            sigma = float(a)
         if o == "--session":
             session = a
         if o in ("-h", "-?", "--help"):
-            usage(sys.argv[0], ka_bins, kb_bins, session)
+            usage(sys.argv[0], ka_bins, kb_bins, sigma, session)
             exit()
 
     try:
         pulse, noise = params
     except:
-        usage(sys.argv[0], ka_bins, kb_bins, session)
+        usage(sys.argv[0], ka_bins, kb_bins, sigma, session)
         exit()
     
     
-    main(pulse, noise, cutoff=cutoff, ka_bins=ka_bins, kb_bins=kb_bins, session=session)
+    main(pulse, noise, cutoff=cutoff, ka_bins=ka_bins, kb_bins=kb_bins, sigma=sigma, session=session)
