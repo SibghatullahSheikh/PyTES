@@ -5,15 +5,16 @@ from scipy.optimize import curve_fit
 from Filter import median_filter
 from Constants import *
 
-def baseline(sn):
+def baseline(sn, E=5.9e3):
     """
-    Calculate a baseline resolution dE(FWHM) for 5.9keV.
+    Calculate a baseline resolution dE(FWHM) for the given energy.
     
     Parameter:
         sn:     S/N ratio (array-like)
+        E:      energy to calculate dE
     """
     
-    return 2.35*5.9/np.sqrt((sn**2).sum()*2)*1000
+    return 2*np.sqrt(2*np.log(2))*E/np.sqrt((sn**2).sum()*2)
 
 def ka(pha, sigma=1):
     """
