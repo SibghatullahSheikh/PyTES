@@ -1,12 +1,42 @@
 #!/usr/bin/env python
 
+from multiprocessing import Lock, Pool, cpu_count
+from functools import partial
 from numpy import *
 from pytes import *
 
-def main(N, fwhm, noise, bits, sps, t, prefix):
+def main(N, fwhm, noise, bits, sps, t, prefix, batch=1000):
     
     print "Simulating %d pulses/noises. This takes bit long time..." % N
-    p, n = Simulation.simulate(N, fwhm, noise=noise, sps=sps, t=t)
+    
+    # Prepare empty pulse and noise arrays
+    p = zeros((N, int(sps*t)))
+    n = zeros((N, int(sps*t)))
+    
+    # Define callback function
+    def cb(p, n, lock, result):
+        lock.acquire()
+        _p, _n = result
+        p[cb.wm:cb.wm+len(_p)] = _p
+        n[cb.wm:cb.wm+len(_n)] = _n
+        cb.wm += len(_p)
+        print "Generated %d/%d..." % (cb.wm, N)
+        lock.release()
+    cb.wm = 0
+    
+    # Start sub-processes
+    _N = N
+    pool = Pool(cpu_count())
+    lock = Lock()
+    while _N > batch:
+        pool.apply_async(Simulation.simulate, args=(batch, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}, callback=partial(cb, p, n, lock))
+        _N -= batch
+    
+    if _N > 0:
+        pool.apply_async(Simulation.simulate, args=(_N, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}, callback=partial(cb, p, n, lock))
+    
+    pool.close()
+    pool.join()
     
     print "Saving FITS files."
     Util.savefits(p, prefix+"p.fits", sps=sps, bits=bits)
@@ -39,14 +69,14 @@ if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'hc:p:n:e:b:s:t:')
+    opts, params = getopt.getopt(sys.argv[1:], 'h?c:p:n:e:b:s:t:', ['help'])
     
     # Initialize
     N = 1000
     prefix = "dummy"
     noise = 3e-6
-    fwhm = 2
-    bits = 14
+    fwhm = 0
+    bits = 16
     sps = 1e6
     t = 2e-3
     
@@ -65,7 +95,7 @@ if __name__ == '__main__':
             sps = float(a)
         if o == "-t":
             t = float(a)
-        if o == "-h":
+        if o in ("-h", "-?", "--help"):
             usage(sys.argv[0], N, prefix, noise, fwhm, bits, sps, t)
             exit()
  
