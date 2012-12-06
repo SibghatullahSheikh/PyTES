@@ -53,7 +53,7 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sessio
     
     # Plot S/N ratio
     figure()
-    plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn*sqrt(2*dtp))
+    plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn*sqrt(dtp*p.shape[-1]))
     loglog()
     xlabel('Frequency\quad(Hz)')
     ylabel('S/N\quad(/$\sqrt{\mathrm{Hz}}$)')
