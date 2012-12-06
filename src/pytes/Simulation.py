@@ -82,9 +82,11 @@ def random(pdf, N, min, max):
     
     valid = np.array([])
     
+    maxp = np.max(pdf(np.linspace(min, max, 1e6)))
+    
     while len(valid) < N:
         r = np.random.uniform(min, max, N)
-        p = np.random.uniform(0, 1, N)
+        p = np.random.uniform(0, maxp, N)
         
         valid = np.concatenate((valid, r[p < pdf(r)]))
     
