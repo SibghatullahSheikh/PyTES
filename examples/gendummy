@@ -9,38 +9,25 @@ def main(N, fwhm, noise, bits, sps, t, prefix, batch=1000):
     
     print "Simulating %d pulses/noises. This takes bit long time..." % N
     
-    # Prepare empty pulse and noise arrays
-    p = zeros((N, int(sps*t)))
-    n = zeros((N, int(sps*t)))
-    
-    # Define callback function
-    def cb(p, n, lock, result):
-        lock.acquire()
-        _p, _n = result
-        p[cb.wm:cb.wm+len(_p)] = _p
-        n[cb.wm:cb.wm+len(_n)] = _n
-        cb.wm += len(_p)
-        print "Generated %d/%d..." % (cb.wm, N)
-        lock.release()
-    cb.wm = 0
-    
     # Start sub-processes
+    result_list = []
     _N = N
     pool = Pool(cpu_count())
     lock = Lock()
     while _N > batch:
-        pool.apply_async(Simulation.simulate, args=(batch, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}, callback=partial(cb, p, n, lock))
+        result_list.append(pool.apply_async(Simulation.simulate, args=(batch, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}))
         _N -= batch
     
     if _N > 0:
-        pool.apply_async(Simulation.simulate, args=(_N, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}, callback=partial(cb, p, n, lock))
+        result_list.append(pool.apply_async(Simulation.simulate, args=(_N, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}))
     
     pool.close()
     pool.join()
     
     print "Saving FITS files."
-    Util.savefits(p, prefix+"p.fits", sps=sps, bits=bits)
-    Util.savefits(n, prefix+"n.fits", sps=sps, bits=bits, noise=True)
+    results = [ r.get() for r in result_list ]
+    Util.savefits(vstack(asarray(results)[:,0,:,:]), prefix+"p.fits", sps=sps, bits=bits)
+    Util.savefits(vstack(asarray(results)[:,1,:,:]), prefix+"n.fits", sps=sps, bits=bits, noise=True)
     
     return 0
 
