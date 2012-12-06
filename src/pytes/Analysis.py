@@ -255,13 +255,13 @@ def fit(pha, bins=40, line="MnKa"):
         raise ValueError("No data for %s" % line)
     
     # Create histogram
-    n, bins = np.histogram(pha, bins=bins, normed=True)
+    n, bins = np.histogram(pha, bins=bins, density=True)
     bincenters = (bins[1:]+bins[:-1])/2
     
     # Fit
     def model(E, dE, A, width):
         return A * line_model(E-dE, width, line)
     
-    popt, pcov = curve_fit(model, bincenters, n, p0=(0, 1, 5))
+    popt, pcov = curve_fit(model, bincenters, n, p0=(0, max(n), 1/max(n)))
     
     return popt[0], np.sqrt(pcov[0][0]), popt[1], np.sqrt(pcov[1][1]), popt[2], np.sqrt(pcov[2][2])
