@@ -138,6 +138,23 @@ def voigt(E, Ec, nw, gw):
 
     return wofz(z).real / (fwhm2sigma(gw)*np.sqrt(2*np.pi))
 
+def lorentzian(E, Ec, nw):
+    """
+    Lorentzian profile
+    
+    Parameters:
+        E:      energy
+        Ec:     center energy
+        nw:     natural width (FWHM)
+    
+    Return (lorentz)
+        lorentz:  Lorentzian profile
+    """
+
+    gamma = fwhm2gamma(nw)
+
+    return 1.0/np.pi * (gamma / ((E-Ec)**2 + gamma**2))
+
 def sigma2fwhm(sigma):
     """
     Convert sigma to width (FWHM)
@@ -207,7 +224,12 @@ def line_model(E, width, line="MnKa"):
     if not FS.has_key(line):
         raise ValueError("No data for %s" % line)
     
-    return np.array([ p[2] * voigt(E, p[0], p[1], width) for p in FS[line] ]).sum(axis=0)
+    if width == 0:
+        model = np.array([ p[2] * lorentzian(E, p[0], p[1]) for p in FS[line] ]).sum(axis=0)
+    else:
+        model = np.array([ p[2] * voigt(E, p[0], p[1], width) for p in FS[line] ]).sum(axis=0)
+    
+    return model
 
 def fit(pha, bins=40, line="MnKa"):
     """

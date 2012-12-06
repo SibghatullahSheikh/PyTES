@@ -117,7 +117,7 @@ def power(data):
     data = np.asarray(data)
     
     # Real DFT
-    ps = np.abs(np.fft.rfft(data))**2 / data.shape[-1]
+    ps = np.abs(np.fft.rfft(data) / data.shape[-1])**2
     
     if data.shape[-1] % 2:
         # Odd
@@ -142,7 +142,7 @@ def average_noise(noise, sigma=3, **kwargs):
         sum:    tuple of (min, max) for sum
     
     Return (averaged_pulse)
-        power_noise:    calculated averaged noise power
+        power_noise:    calculated averaged noise power in V^2
     """
 
     # Convert to numpy array

@@ -54,7 +54,6 @@ def white(sigma=3e-6, mean=0.0, points=1024, t=2e-3):
         mean:   DC offset of noise signal (Default: 0 V)
         t:      sample time (Default: 2 ms)
         points: data length (scalar or 2-dim tuple/list) (Default: 1024)
-        points: 
     """
     
     points = np.asarray(points)

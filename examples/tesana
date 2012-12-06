@@ -33,7 +33,7 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sessio
     savefig('%s-averagepulse.pdf' % session)
     
     # Plot noise spectrum
-    nspec = sqrt(Filter.average_noise(n)*dtn)
+    nspec = sqrt(Filter.average_noise(n)*(dtn*n.shape[-1]))
     figure()
     plot(arange(len(nspec))*(dtn*n.shape[-1])**-1, nspec)
     loglog()
@@ -53,7 +53,7 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sessio
     
     # Plot S/N ratio
     figure()
-    plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn)
+    plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn*sqrt(2*dtp))
     loglog()
     xlabel('Frequency\quad(Hz)')
     ylabel('S/N\quad(/$\sqrt{\mathrm{Hz}}$)')
