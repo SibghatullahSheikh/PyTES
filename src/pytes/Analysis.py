@@ -208,13 +208,14 @@ def fwhm2gamma(fwhm):
     
     return fwhm/2.0
 
-def line_model(E, width, line="MnKa"):
+def line_model(E, dE=0, width=0, line="MnKa"):
     """
     Line model
     
     Parameters (and their default values):
-        E:      energy
-        width:  FWHM of gaussian profile
+        E:      energy in eV (array-like)
+        dE:     shift from center energy in eV (Default: 0 eV)
+        width:  FWHM of gaussian profile in eV (Default: 0 eV)
         line:   line (Default: MnKa)
     
     Return (i)
@@ -225,10 +226,13 @@ def line_model(E, width, line="MnKa"):
     if not FS.has_key(line):
         raise ValueError("No data for %s" % line)
     
+    # Center energy
+    Ec = np.exp(np.log(np.asarray(FS[line])[:,(0,2)]).sum(axis=1)).sum()
+    
     if width == 0:
-        model = np.array([ p[2] * lorentzian(E, p[0], p[1]) for p in FS[line] ]).sum(axis=0)
+        model = np.array([ p[2] * lorentzian(E, p[0]*(1+dE/Ec), p[1]) for p in FS[line] ]).sum(axis=0)
     else:
-        model = np.array([ p[2] * voigt(E, p[0], p[1], width) for p in FS[line] ]).sum(axis=0)
+        model = np.array([ p[2] * voigt(E, p[0]*(1+dE/Ec), p[1], width) for p in FS[line] ]).sum(axis=0)
     
     return model
 
@@ -241,7 +245,7 @@ def fit(pha, bins=40, line="MnKa"):
         bins:   histogram bins (Default: 40)
         line:   line to fit (Default: MnKa)
     
-    Return (Ec, Ec_error, A, A_error, sigma, sigma_error)
+    Return (dE, dE_error, A, A_error, sigma, sigma_error)
         dE:             shift from line center
         dE_error:       dE error (1-sigma)
         A:              fitted amplitude
@@ -260,7 +264,7 @@ def fit(pha, bins=40, line="MnKa"):
     
     # Fit
     def model(E, dE, A, width):
-        return A * line_model(E-dE, width, line)
+        return A * line_model(E, dE, width, line)
     
     popt, pcov = curve_fit(model, bincenters, n, p0=(0, max(n), 1/max(n)))
     
