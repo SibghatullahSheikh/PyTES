@@ -108,7 +108,7 @@ def fit(data, nbin, line, session):
 def plot_model(E, dE, A, width, line):
     
     # Plot sum
-    plot(E, A*Analysis.line_model(E-dE, width, line=line), 'r-')
+    plot(E, A*Analysis.line_model(E, dE, width, line=line), 'r-')
     
     # Plot individuals
     for p in Constants.FS[line]:
