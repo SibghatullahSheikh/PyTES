@@ -2,9 +2,15 @@
 #
 # Mostly taken from: 10.1103/PhysRevA.56.4554
 
+import numpy as np
 
 ## Line Energy
-LE = {"Mn": (5893.98, 6486.372)}
+LE = {
+    "Mn": (
+        np.exp(np.log(np.asarray(FS["MnKa"])[:,(0,2)]).sum(axis=1)).sum(),
+        np.exp(np.log(np.asarray(FS["MnKb"])[:,(0,2)]).sum(axis=1)).sum()
+    )
+}
 
 ## Fine Structure
 FS = {
@@ -13,7 +19,7 @@ FS = {
         (5897.867, 2.043, 0.141),   # alpha_12
         (5894.829, 4.499, 0.079),   # alpha_13
         (5896.532, 2.663, 0.066),   # alpha_14
-        (5899.417, 0.969, 0.005),   # alpha_15
+        (5899.417, 0.969, 0.018),   # alpha_15
         (5887.743, 2.361, 0.229),   # alpha_21
         (5886.495, 4.216, 0.110)),  # alpha_22
     "MnKb": (
