@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use( 'Agg' )
 from pylab import figure, plot, hist, xlim, loglog, xlabel, ylabel, savefig
 
-def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sigma=2, session="Unnamed"):
+def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sigma=2, shift=False, session="Unnamed"):
     
     print "Session: %s" % session
     
@@ -84,48 +84,36 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, sigma=
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    fit(mnka, ka_bins, "MnKa", session)
+    fit(mnka, ka_bins, "MnKa", shift, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
-    fit(mnkb, kb_bins, "MnKb", session)
+    fit(mnkb, kb_bins, "MnKb", shift, session)
     
     return 0
 
-def fit(data, nbin, line, session):
+def fit(data, nbin, line, shift, session):
     # Fit
-    dE, dE_error, A, A_error, width, width_error = Analysis.fit(data, bins=nbin, line=line)
+    dE, dE_error, A, A_error, width, width_error = Analysis.fit(data, bins=nbin, line=line, shift=shift)
     
-    # Draw fitting result
+    # Draw histogram
     figure()
-    bins = histogram(data, bins=nbin)
-    E = linspace(bins.min(), bins.max(), 1000)
-    plot_model(E, dE, A, width, line)
-    savefig("%s-%s.pdf" % (session, line))
+    n, bins, patches = hist(data, bins=nbin, normed=True, histtype='step', color='k')
+    cbins = (bins[1:]+bins[:-1])/2
+    E = linspace(cbins.min(), cbins.max(), 1000)
 
-    print "%s: %.2f +/- %.2f eV" % (line, width, width_error)
-
-def plot_model(E, dE, A, width, line):
-    
-    # Model profile
-    model = A*Analysis.line_model(E, dE, width, line=line, full=True)
-    
-    # Plot sum
+    # Draw fitting result
+    model = A*Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
     plot(E, model[0], 'r-')
-    
-    # Plot individuals
     for m in model[1:]:
         plot(E, m, 'b--')
 
     xlabel('Energy\quad(eV)')
     ylabel('Normalized Count')
 
-def histogram(data, bins):
-    
-    # Draw histogram
-    n, bins, patches = hist(data, bins=bins, normed=True, histtype='step', color='k')
+    savefig("%s-%s.pdf" % (session, line))
 
-    return (bins[1:]+bins[:-1])/2
+    print "%s: %.2f +/- %.2f eV" % (line, width, width_error)
 
 def usage(prog, ka_bins, kb_bins, sigma, session):
     print """Usage: %s [options] pulse.fits noise.fits
@@ -139,6 +127,8 @@ Options:
         Desired number of bins for MnKb spectrum (Default: %d)
     -s sigmas
         Sigmas for median filter (Default: %d)
+    --shift
+        Treat dE as energy shift instead of scaling
     --session name
         Session name used for output files (Default: %s)
     -h
@@ -149,13 +139,14 @@ if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['session=', 'help'])
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['shift', 'session=', 'help'])
     
     # Initialize
     cutoff = None
     ka_bins = 40
     kb_bins = 20
     sigma = 2
+    shift = False
     session = "Unnamed"
     
     for o, a in opts:
@@ -167,6 +158,8 @@ if __name__ == '__main__':
             kb_bins = int(a)
         if o == "-s":
             sigma = float(a)
+        if o == "--shift":
+            shift = True
         if o == "--session":
             session = a
         if o in ("-h", "-?", "--help"):
@@ -180,4 +173,4 @@ if __name__ == '__main__':
         exit()
     
     
-    main(pulse, noise, cutoff=cutoff, ka_bins=ka_bins, kb_bins=kb_bins, sigma=sigma, session=session)
+    main(pulse, noise, cutoff=cutoff, ka_bins=ka_bins, kb_bins=kb_bins, shift=shift, sigma=sigma, session=session)

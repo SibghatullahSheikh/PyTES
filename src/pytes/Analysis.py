@@ -208,7 +208,7 @@ def fwhm2gamma(fwhm):
     
     return fwhm/2.0
 
-def line_model(E, dE=0, width=0, line="MnKa", full=False):
+def line_model(E, dE=0, width=0, line="MnKa", shift=False, full=False):
     """
     Line model
     
@@ -217,11 +217,26 @@ def line_model(E, dE=0, width=0, line="MnKa", full=False):
         dE:     shift from center energy in eV (Default: 0 eV)
         width:  FWHM of gaussian profile in eV (Default: 0 eV)
         line:   line (Default: MnKa)
+        shift:  treat dE as shift if True instead of scaling (Default: False)
         full:   switch for return value (Default: False)
     
     Return (i) when full = False or (i, i1, i2, ...) when full = True
         i:      total intensity
         i#:     component intensities
+    
+    Note:
+        If shift is False, adjusted center energies ec_i of fine structures
+        will be
+        
+            ec_i = Ec_i * (1 + dE/Ec)
+        
+        where Ec_i is the theoretical (experimental) center energy of fine
+        structures and Ec is the center energy of the overall profile, which
+        is the weighted sum of each component profiles.
+        
+        If shift is True, ec_i will simply be
+        
+            ec_i = Ec_i + dE.
     """
     
     # Sanity check
@@ -231,17 +246,23 @@ def line_model(E, dE=0, width=0, line="MnKa", full=False):
     # Center energy
     Ec = np.exp(np.log(np.asarray(FS[line])[:,(0,2)]).sum(axis=1)).sum()
     
-    if width == 0:
-        model = np.array([ p[2] * lorentzian(E, p[0]*(1+dE/Ec), p[1]) for p in FS[line] ])
+    if shift:
+        if width == 0:
+            model = np.array([ p[2] * lorentzian(E, p[0]+dE, p[1]) for p in FS[line] ])
+        else:
+            model = np.array([ p[2] * voigt(E, p[0]+dE, p[1], width) for p in FS[line] ])
     else:
-        model = np.array([ p[2] * voigt(E, p[0]*(1+dE/Ec), p[1], width) for p in FS[line] ])
-    
+        if width == 0:
+            model = np.array([ p[2] * lorentzian(E, p[0]*(1+dE/Ec), p[1]) for p in FS[line] ])
+        else:
+            model = np.array([ p[2] * voigt(E, p[0]*(1+dE/Ec), p[1], width) for p in FS[line] ])
+
     if full:
         return np.vstack((model.sum(axis=0)[np.newaxis], model))
     else:
         return model.sum(axis=0)
 
-def fit(pha, bins=40, line="MnKa"):
+def fit(pha, bins=40, line="MnKa", shift=False):
     """
     Fit line spectrum by Voigt profiles
     
@@ -249,6 +270,7 @@ def fit(pha, bins=40, line="MnKa"):
         pha:    pha data (array-like)
         bins:   histogram bins (Default: 40)
         line:   line to fit (Default: MnKa)
+        shift:  treat dE as shift if True instead of scaling (Default: False)
     
     Return (dE, dE_error, A, A_error, sigma, sigma_error)
         dE:             shift from line center
@@ -269,7 +291,7 @@ def fit(pha, bins=40, line="MnKa"):
     
     # Fit
     def model(E, dE, A, width):
-        return A * line_model(E, dE, width, line)
+        return A * line_model(E, dE, width, line, shift)
     
     popt, pcov = curve_fit(model, bincenters, n, p0=(0, max(n), 1/max(n)))
     
