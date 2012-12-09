@@ -208,7 +208,7 @@ def fwhm2gamma(fwhm):
     
     return fwhm/2.0
 
-def line_model(E, dE=0, width=0, line="MnKa"):
+def line_model(E, dE=0, width=0, line="MnKa", full=False):
     """
     Line model
     
@@ -217,9 +217,11 @@ def line_model(E, dE=0, width=0, line="MnKa"):
         dE:     shift from center energy in eV (Default: 0 eV)
         width:  FWHM of gaussian profile in eV (Default: 0 eV)
         line:   line (Default: MnKa)
+        full:   switch for return value (Default: False)
     
-    Return (i)
-        i:      intensity
+    Return (i) when full = False or (i, i1, i2, ...) when full = True
+        i:      total intensity
+        i#:     component intensities
     """
     
     # Sanity check
@@ -230,11 +232,14 @@ def line_model(E, dE=0, width=0, line="MnKa"):
     Ec = np.exp(np.log(np.asarray(FS[line])[:,(0,2)]).sum(axis=1)).sum()
     
     if width == 0:
-        model = np.array([ p[2] * lorentzian(E, p[0]*(1+dE/Ec), p[1]) for p in FS[line] ]).sum(axis=0)
+        model = np.array([ p[2] * lorentzian(E, p[0]*(1+dE/Ec), p[1]) for p in FS[line] ])
     else:
-        model = np.array([ p[2] * voigt(E, p[0]*(1+dE/Ec), p[1], width) for p in FS[line] ]).sum(axis=0)
+        model = np.array([ p[2] * voigt(E, p[0]*(1+dE/Ec), p[1], width) for p in FS[line] ])
     
-    return model
+    if full:
+        return np.vstack((model.sum(axis=0)[np.newaxis], model))
+    else:
+        return model.sum(axis=0)
 
 def fit(pha, bins=40, line="MnKa"):
     """

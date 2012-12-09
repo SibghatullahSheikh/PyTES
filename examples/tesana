@@ -107,12 +107,15 @@ def fit(data, nbin, line, session):
 
 def plot_model(E, dE, A, width, line):
     
+    # Model profile
+    model = A*Analysis.line_model(E, dE, width, line=line, full=True)
+    
     # Plot sum
-    plot(E, A*Analysis.line_model(E, dE, width, line=line), 'r-')
+    plot(E, model[0], 'r-')
     
     # Plot individuals
-    for p in Constants.FS[line]:
-        plot(E, A*p[2]*Analysis.voigt(E-dE, p[0], p[1], width), 'b--')
+    for m in model[1:]:
+        plot(E, m, 'b--')
 
     xlabel('Energy\quad(eV)')
     ylabel('Normalized Count')
