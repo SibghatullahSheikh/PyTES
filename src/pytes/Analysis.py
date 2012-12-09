@@ -262,23 +262,55 @@ def line_model(E, dE=0, width=0, line="MnKa", shift=False, full=False):
     else:
         return model.sum(axis=0)
 
-def fit(pha, bins=40, line="MnKa", shift=False):
+def group_bin(n, bins, min=100):
+    """
+    Group PHA bins to have at least given number of minimum counts
+    
+    Parameters (and their default values):
+        n:      counts
+        bins:   bin edges
+        min:    minimum counts to group (Default: 100)
+    
+    Return (grouped_n, grouped_bins)
+        grouped_n:      grouped counts
+        grouped_bins:   grouped bin edges
+    """
+    
+    grp_n = []
+    grp_bins = [bins[0]]
+
+    n_sum = 0
+
+    for p in zip(n, bins[1:]):
+        n_sum += p[0]
+        
+        if n_sum >= min:
+            grp_n.append(n_sum)
+            grp_bins.append(p[1])
+            n_sum = 0
+    
+    return np.asarray(grp_n), np.asarray(grp_bins)
+
+def fit(pha, bins=40, min=20, line="MnKa", shift=False):
     """
     Fit line spectrum by Voigt profiles
     
     Parameters (and their default values):
         pha:    pha data (array-like)
         bins:   histogram bins (Default: 40)
+        min:    minimum counts to group (Default: 20)
         line:   line to fit (Default: MnKa)
         shift:  treat dE as shift if True instead of scaling (Default: False)
     
-    Return (dE, dE_error, A, A_error, sigma, sigma_error)
+    Return ((dE, dE_error, A, A_error, sigma, sigma_error), chi_squared, dof)
         dE:             shift from line center
         dE_error:       dE error (1-sigma)
-        A:              fitted amplitude
+        A:              fitted amplitude (count/keV)
         A_error:        amplitude error (1-sigma)
         width:          fitted gaussian width (FWHM)
         width_error:    width error (1-sigma)
+        chi_squared:    chi^2
+        dof:            degrees of freedom
     """
     
     # Sanity check
@@ -286,13 +318,30 @@ def fit(pha, bins=40, line="MnKa", shift=False):
         raise ValueError("No data for %s" % line)
     
     # Create histogram
-    n, bins = np.histogram(pha, bins=bins, density=True)
-    bincenters = (bins[1:]+bins[:-1])/2
+    n, _bins = np.histogram(pha, bins=bins)
+    
+    # Group bins
+    gn, gbins = group_bin(n, _bins, min)
+    ngn = gn/(np.diff(gbins)*1e3)   # normalized counts in counts/keV
+    ngn_sigma = np.sqrt(gn)/(np.diff(gbins)*1e3)
+    
+    bincenters = (gbins[1:]+gbins[:-1])/2
     
     # Fit
     def model(E, dE, A, width):
         return A * line_model(E, dE, width, line, shift)
     
-    popt, pcov = curve_fit(model, bincenters, n, p0=(0, max(n), 1/max(n)))
+    popt, pcov = curve_fit(model, bincenters, ngn,
+                        p0=(0, max(ngn), ngn.sum()/max(ngn)), sigma=ngn_sigma)
+
+    if len(pcov) == 1:
+        raise Exception("Fitting failed for %s" % line)
     
-    return popt[0], np.sqrt(pcov[0][0]), popt[1], np.sqrt(pcov[1][1]), popt[2], np.sqrt(pcov[2][2])
+    dE, A, width = popt
+    dE_e, A_e, width_e = np.sqrt(np.diag(pcov))
+    
+    # Calculate chi_squared
+    chi_squared = (((ngn - model(bincenters, dE, A, width))/ngn_sigma)**2).sum()
+    dof = len(bincenters) - 3
+    
+    return (dE, dE_e, A, A_e, width, width_e), chi_squared, dof
