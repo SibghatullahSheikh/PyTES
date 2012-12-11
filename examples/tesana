@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use( 'Agg' )
 from pylab import figure, plot, errorbar, hist, xlim, loglog, xlabel, ylabel, savefig
 
-def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, group=20, sigma=2, shift=False, session="Unnamed"):
+def main(pulse, noise, cutoff=None, max_shift=10, ka_min=80, kb_min=40, sigma=2, shift=False, session="Unnamed"):
     
     print "Session: %s" % session
     
@@ -84,19 +84,19 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_bins=40, kb_bins=20, group=
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    fit(mnka, ka_bins, "MnKa", group, shift, session)
+    fit(mnka, ka_min, "MnKa", shift, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
-    fit(mnkb, kb_bins, "MnKb", group, shift, session)
+    fit(mnkb, kb_min, "MnKb", shift, session)
     
     return 0
 
-def fit(data, nbin, line, group, shift, session):
+def fit(data, min, line, shift, session):
     # Draw histogram
     figure()
-    n, bins = histogram(data, bins=nbin)
-    gn, gbins = Analysis.group_bin(n, bins, min=group)
+    n, bins = Analysis.histogram(data)
+    gn, gbins = Analysis.group_bin(n, bins, min=min)
     ngn = gn/(diff(gbins)*1e3)
     ngn_sigma = sqrt(gn)/(diff(gbins)*1e3)
     cbins = (gbins[1:]+gbins[:-1])/2
@@ -105,7 +105,7 @@ def fit(data, nbin, line, group, shift, session):
 
     # Fit
     (dE, dE_error, A, A_error, width, width_error), chi_squared, dof = \
-            Analysis.fit(data, bins=nbin, min=group, line=line, shift=shift)
+            Analysis.fit(data, min=min, line=line, shift=shift)
 
     # Draw fitting result
     E = linspace(bins.min(), bins.max(), 1000)
@@ -122,18 +122,16 @@ def fit(data, nbin, line, group, shift, session):
     print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
             % (line, width, width_error, dE, chi_squared, dof, chi_squared/dof)
 
-def usage(prog, ka_bins, kb_bins, group, sigma, session):
+def usage(prog, ka_min, kb_min, sigma, session):
     print """Usage: %s [options] pulse.fits noise.fits
 
 Options:
     -c cutoff
         Cut-off bin for template generation (Default: no cut-off)
-    -a bins
-        Desired number of bins for MnKa spectrum (Default: %d)
-    -b bins
-        Desired number of bins for MnKb spectrum (Default: %d)
-    -g min
-        Desired minimum counts to group bins (Default: %d)
+    -a min
+        Desired minimum photons to group bins for MnKa spectrum (Default: %d)
+    -b min
+        Desired minimum photons to group bins for MnKb spectrum (Default: %d)
     -s sigmas
         Sigmas for median filter (Default: %d)
     --shift
@@ -141,20 +139,18 @@ Options:
     --session name
         Session name used for output files (Default: %s)
     -h
-        Show this usage.""" % (prog, ka_bins, kb_bins, group, sigma, session)
-
+        Show this usage.""" % (prog, ka_min, kb_min, sigma, session)
 
 if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:g:s:', ['shift', 'session=', 'help'])
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['shift', 'session=', 'help'])
     
     # Initialize
     cutoff = None
-    ka_bins = 40
-    kb_bins = 20
-    group = 20
+    ka_min = 80
+    kb_min = 40
     sigma = 2
     shift = False
     session = "Unnamed"
@@ -163,11 +159,9 @@ if __name__ == '__main__':
         if o == "-c":
             cutoff = int(a)
         if o == "-a":
-            ka_bins = int(a)
+            ka_min = int(a)
         if o == "-b":
-            kb_bins = int(a)
-        if o == "-g":
-            group = int(a)
+            kb_min = int(a)
         if o == "-s":
             sigma = float(a)
         if o == "--shift":
@@ -175,14 +169,13 @@ if __name__ == '__main__':
         if o == "--session":
             session = a
         if o in ("-h", "-?", "--help"):
-            usage(sys.argv[0], ka_bins, kb_bins, group, sigma, session)
+            usage(sys.argv[0], ka_min, kb_min, sigma, session)
             exit()
 
     try:
         pulse, noise = params
     except:
-        usage(sys.argv[0], ka_bins, kb_bins, group, sigma, session)
+        usage(sys.argv[0], ka_min, kb_min, sigma, session)
         exit()
     
-    
-    main(pulse, noise, cutoff=cutoff, ka_bins=ka_bins, kb_bins=kb_bins, group=group, shift=shift, sigma=sigma, session=session)
+    main(pulse, noise, cutoff=cutoff, ka_min=ka_min, kb_min=kb_min, shift=shift, sigma=sigma, session=session)

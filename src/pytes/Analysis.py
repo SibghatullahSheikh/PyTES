@@ -291,14 +291,35 @@ def group_bin(n, bins, min=100):
     
     return np.asarray(grp_n), np.asarray(grp_bins)
 
-def fit(pha, bins=40, min=20, line="MnKa", shift=False):
+def histogram(pha, binsize=1.0):
+    """
+    Create histogram
+    
+    Parameter:
+        pha:        pha data (array-like)
+        binsize:    size of bin in eV (Default: 1.0 eV)
+    
+    Return (n, bins)
+        n:      photon count
+        bins:   bin edge array
+    
+    Note:
+        - bin size is 1eV/bin.
+    """
+    
+    # Create histogram
+    bins = np.arange(np.floor(pha.min()), np.ceil(pha.max())+binsize, binsize) 
+    n, bins = np.histogram(pha, bins=bins)
+    
+    return n, bins
+
+def fit(pha, min=20, line="MnKa", shift=False):
     """
     Fit line spectrum by Voigt profiles
     
     Parameters (and their default values):
         pha:    pha data (array-like)
-        bins:   histogram bins (Default: 40)
-        min:    minimum counts to group (Default: 20)
+        min:    minimum counts to group bins (Default: 20 bins)
         line:   line to fit (Default: MnKa)
         shift:  treat dE as shift if True instead of scaling (Default: False)
     
@@ -318,10 +339,10 @@ def fit(pha, bins=40, min=20, line="MnKa", shift=False):
         raise ValueError("No data for %s" % line)
     
     # Create histogram
-    n, _bins = np.histogram(pha, bins=bins)
+    n, bins = histogram(pha)
     
     # Group bins
-    gn, gbins = group_bin(n, _bins, min)
+    gn, gbins = group_bin(n, bins, min)
     ngn = gn/(np.diff(gbins)*1e3)   # normalized counts in counts/keV
     ngn_sigma = np.sqrt(gn)/(np.diff(gbins)*1e3)
     
