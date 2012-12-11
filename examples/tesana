@@ -151,7 +151,7 @@ if __name__ == '__main__':
     cutoff = None
     ka_min = 80
     kb_min = 40
-    sigma = 2
+    sigma = 3
     shift = False
     session = "Unnamed"
     
