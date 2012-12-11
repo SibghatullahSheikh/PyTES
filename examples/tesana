@@ -7,7 +7,9 @@ import matplotlib
 matplotlib.use( 'Agg' )
 from pylab import figure, plot, errorbar, hist, xlim, loglog, xlabel, ylabel, savefig
 
-def main(pulse, noise, cutoff=None, binsize=1, max_shift=10, ka_min=80, kb_min=40, sigma=2, shift=False, session="Unnamed"):
+def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
+            ka_min=80, kb_min=40, sigma=2, shift=False,
+            method="mle", session="Unnamed"):
     
     print "Session: %s" % session
     
@@ -16,7 +18,6 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10, ka_min=80, kb_min=4
     p = phl[1].data.field(1).copy()
     dtp = phl[1].header['THSCL2']
     tp = arange(p.shape[-1]) * dtp
-    
     phl.close()
     
     nhl = pyfits.open(noise)
@@ -84,32 +85,50 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10, ka_min=80, kb_min=4
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    fit(mnka, binsize, ka_min, "MnKa", shift, session)
+    fit(mnka, binsize, ka_min, "MnKa", shift, method, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
-    fit(mnkb, binsize, kb_min, "MnKb", shift, session)
+    fit(mnkb, binsize, kb_min, "MnKb", shift, method, session)
     
     return
 
-def fit(data, binsize, min, line, shift, session):
+def fit(data, binsize, min, line, shift, method, session):
     # Draw histogram
     figure()
     n, bins = Analysis.histogram(data, binsize=binsize)
-    gn, gbins = Analysis.group_bin(n, bins, min=min)
+    
+    if method in ("cs", "ls"):
+        gn, gbins = Analysis.group_bin(n, bins, min=min)
+    else:
+        # No grouping in mle
+        gn, gbins = n, bins
+
     ngn = gn/(diff(gbins)*1e3)
     ngn_sigma = sqrt(gn)/(diff(gbins)*1e3)
     cbins = (gbins[1:]+gbins[:-1])/2
 
-    errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
+    if method in ("cs", "ls"):
+        errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
+    else:
+        plot(gbins[1:], ngn, drawstyle='steps', c='k')
 
     # Fit
-    (dE, dE_error, A, A_error, width, width_error), chi_squared, dof = \
-            Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift)
-
+    r, v, e = Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift, method=method)
+    
+    dE, width = r
+    
+    if method in ("cs", "ls"):
+        dE_error, width_error = v
+    
+    if method == "cs":
+        chi_squared, dof = e
+    
     # Draw fitting result
     E = linspace(bins.min(), bins.max(), 1000)
-    model = A*Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
+    
+    model = Analysis.normalization(ngn, gbins, dE, width, line=line, shift=shift) \
+                * Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
     plot(E, model[0], 'r-')
     for m in model[1:]:
         plot(E, m, 'b--')
@@ -119,14 +138,22 @@ def fit(data, binsize, min, line, shift, session):
 
     savefig("%s-%s.pdf" % (session, line))
 
-    print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
+    if method == "mle":
+        print "%s: %.2f eV @ Ec%+.2f eV" \
+            % (line, width, dE)
+    elif method == "cs":
+        print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
             % (line, width, width_error, dE, chi_squared, dof, chi_squared/dof)
+    elif method == "ls":
+        print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV" \
+            % (line, width, width_error, dE)
 
 if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:e:s:', ['shift', 'session=', 'help'])
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:e:s:',
+                            ['shift', 'method=', 'session=', 'help'])
     
     # Initialize
     cutoff = None
@@ -135,6 +162,7 @@ if __name__ == '__main__':
     kb_min = 40
     sigma = 3
     shift = False
+    method = "mle"
     session = "Unnamed"
     
     def usage():
@@ -151,12 +179,15 @@ Options:
         Desired minimum photons to group bins for MnKb spectrum (Default: %d)
     -s sigmas
         Sigmas for median filter (Default: %d)
+    --method method
+        Fitting method from mle (maximum-likelihood estimate), cs (chi-squared)
+        or ls (least-squared) (Default: %s)
     --shift
         Treat dE as energy shift instead of scaling
     --session name
         Session name used for output files (Default: %s)
     -h
-        Show this usage.""" % (sys.argv[0], binsize, ka_min, kb_min, sigma, session)
+        Show this usage.""" % (sys.argv[0], binsize, ka_min, kb_min, sigma, method, session)
     
     for o, a in opts:
         if o == "-c":
@@ -171,6 +202,12 @@ Options:
             sigma = float(a)
         if o == "--shift":
             shift = True
+        if o == "--method":
+            if a.lower() in ("mle", "cs", "ls"):
+                method = a.lower()
+            else:
+                usage()
+                exit()
         if o == "--session":
             session = a
         if o in ("-h", "-?", "--help"):
@@ -185,4 +222,4 @@ Options:
     
     main(pulse, noise, cutoff=cutoff, binsize=binsize,
             ka_min=ka_min, kb_min=kb_min, shift=shift,
-            sigma=sigma, session=session)
+            sigma=sigma, method=method, session=session)

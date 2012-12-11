@@ -1,7 +1,8 @@
 import numpy as np
+import warnings
 from numpy.linalg import lstsq
 from scipy.special import wofz
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 from Filter import median_filter
 from Constants import *
 
@@ -313,9 +314,9 @@ def histogram(pha, binsize=1.0):
     
     return n, bins
 
-def fit(pha, binsize=1, min=20, line="MnKa", shift=False):
+def _fit_cs(pha, binsize=1, min=20, line="MnKa", shift=False):
     """
-    Fit line spectrum by Voigt profiles
+    Chi-squared Fitting of line spectrum by Voigt profiles
     
     Parameters (and their default values):
         pha:        pha data (array-like)
@@ -324,12 +325,10 @@ def fit(pha, binsize=1, min=20, line="MnKa", shift=False):
         line:       line to fit (Default: MnKa)
         shift:      treat dE as shift if True instead of scaling (Default: False)
     
-    Return ((dE, dE_error, A, A_error, sigma, sigma_error), chi_squared, dof)
+    Return (dE, width), (dE_error, width_error), (chi_squared, dof)
         dE:             shift from line center
-        dE_error:       dE error (1-sigma)
-        A:              fitted amplitude (count/keV)
-        A_error:        amplitude error (1-sigma)
         width:          fitted gaussian width (FWHM)
+        dE_error:       dE error (1-sigma)
         width_error:    width error (1-sigma)
         chi_squared:    chi^2
         dof:            degrees of freedom
@@ -366,4 +365,136 @@ def fit(pha, binsize=1, min=20, line="MnKa", shift=False):
     chi_squared = (((ngn - model(bincenters, dE, A, width))/ngn_sigma)**2).sum()
     dof = len(bincenters) - 3
     
-    return (dE, dE_e, A, A_e, width, width_e), chi_squared, dof
+    return (dE, width), (dE_e, width_e), (chi_squared, dof)
+
+def _fit_ls(pha, binsize=1, min=20, line="MnKa", shift=False):
+    """
+    Least-squared Fitting of line spectrum by Voigt profiles
+    
+    Parameters (and their default values):
+        pha:        pha data (array-like)
+        binsize:    size of energy bin in eV for histogram (Default: 1 eV)
+        min:        minimum counts to group bins (Default: 20 bins)
+        line:       line to fit (Default: MnKa)
+        shift:      treat dE as shift if True instead of scaling (Default: False)
+    
+    Return (dE, width), (dE_error, width_error), (None)
+        dE:             shift from line center
+        width:          fitted gaussian width (FWHM)
+        dE_error:       dE error (1-sigma)
+        width_error:    width error (1-sigma)
+    """
+    
+    # Sanity check
+    if not FS.has_key(line):
+        raise ValueError("No data for %s" % line)
+    
+    # Create histogram
+    n, bins = histogram(pha, binsize=binsize)
+    
+    # Group bins
+    gn, gbins = group_bin(n, bins, min)
+    ngn = gn/(np.diff(gbins)*1e3)   # normalized counts in counts/keV
+    ngn_sigma = np.sqrt(gn)/(np.diff(gbins)*1e3)
+    
+    bincenters = (gbins[1:]+gbins[:-1])/2
+    
+    # Fit
+    def model(E, dE, A, width):
+        return A * line_model(E, dE, width, line, shift)
+    
+    popt, pcov = curve_fit(model, bincenters, ngn,
+                        p0=(0, max(ngn), ngn.sum()/max(ngn)))
+
+    if len(pcov) == 1:
+        raise Exception("Fitting failed for %s" % line)
+    
+    dE, A, width = popt
+    dE_e, A_e, width_e = np.sqrt(np.diag(pcov))
+    
+    return (dE, width), (dE_e, width_e), (None)
+
+def _fit_mle(pha, line="MnKa", shift=False):
+    """
+    Maximum-likelihood estimation of line spectrum by Voigt profiles
+    
+    Parameters (and their default values):
+        pha:        pha data (array-like)
+        line:       line to fit (Default: MnKa)
+        shift:      treat dE as shift if True instead of scaling (Default: False)
+    
+    Return (dE, width), (None, None), (None)
+        dE:             shift from line center
+        width:          fitted gaussian width (FWHM)
+    """
+    
+    def lf((dE, width)):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return -np.log(line_model(pha, dE, width, line, shift)).sum()
+    
+    res = minimize(lf, x0=(0, 1), method='Powell')
+    
+    if not res.success:
+        raise RuntimeError('MLE failed')
+    
+    return res.x, (None), (None)
+
+def fit(pha, binsize=1, min=20, line="MnKa", shift=False, method='mle'):
+    """
+    Fit line spectrum by Voigt profiles
+    
+    Parameters (and their default values):
+        pha:        pha data (array-like)
+        binsize:    size of energy bin in eV for histogram (Default: 1 eV)
+        min:        minimum counts to group bins (Default: 20 bins)
+        line:       line to fit (Default: MnKa)
+        shift:      treat dE as shift if True instead of scaling (Default: False)
+        method:     fitting method from mle (maximum-likelihood estimate),
+                    cs (chi-squared) or ls (least-squared) (Default: mle)
+    
+    Return (dE, width), (dE_error, width_error), (chi_squared, dof)
+        dE:             shift from line center
+        width:          fitted gaussian width (FWHM)
+        dE_error:       dE error (1-sigma) (only in cs and ls)
+        width_error:    width error (1-sigma) (only in cs and ls)
+        chi_squared:    chi^2 (only in cs)
+        dof:            degrees of freedom (only in cs)
+    """
+    
+    if method.lower() == "mle":
+        return _fit_mle(pha, line=line, shift=shift)
+    elif method.lower() == "cs":
+        return _fit_cs(pha, binsize=binsize, min=min, line=line, shift=shift)
+    elif method.lower() == "ls":
+        return _fit_ls(pha, binsize=binsize, min=min, line=line, shift=shift)
+    else:
+        raise ValueError('Unknown method: %s' % method)
+
+def normalization(n, bins, dE, width, line="MnKa", shift=False):
+    """
+    Estimate model normalization
+    
+    Parameters (and their default values):
+        n:      counts
+        bins:   bin edges
+        dE:     shift from line center
+        width:  fitted gaussian width (FWHM)
+        line:   line to fit (Default: MnKa)
+        shift:  treat dE as shift if True instead of scaling (Default: False)
+    
+    Return (norm)
+        norm:   normalization
+    """
+    
+    # Model
+    def model(E, A):
+        return A * line_model(E, dE, width, line, shift)
+    
+    bincenters = (bins[1:]+bins[:-1])/2
+    
+    popt, pcov = curve_fit(model, bincenters, n, p0=(max(n)))
+    
+    return popt[0]
+    
+    
