@@ -122,8 +122,22 @@ def fit(data, min, line, shift, session):
     print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
             % (line, width, width_error, dE, chi_squared, dof, chi_squared/dof)
 
-def usage(prog, ka_min, kb_min, sigma, session):
-    print """Usage: %s [options] pulse.fits noise.fits
+if __name__ == '__main__':
+    
+    import sys, getopt
+    
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['shift', 'session=', 'help'])
+    
+    # Initialize
+    cutoff = None
+    ka_min = 80
+    kb_min = 40
+    sigma = 3
+    shift = False
+    session = "Unnamed"
+    
+    def usage(prog, ka_min, kb_min, sigma, session):
+        print """Usage: %s [options] pulse.fits noise.fits
 
 Options:
     -c cutoff
@@ -140,20 +154,6 @@ Options:
         Session name used for output files (Default: %s)
     -h
         Show this usage.""" % (prog, ka_min, kb_min, sigma, session)
-
-if __name__ == '__main__':
-    
-    import sys, getopt
-    
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['shift', 'session=', 'help'])
-    
-    # Initialize
-    cutoff = None
-    ka_min = 80
-    kb_min = 40
-    sigma = 3
-    shift = False
-    session = "Unnamed"
     
     for o, a in opts:
         if o == "-c":
