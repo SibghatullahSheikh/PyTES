@@ -313,15 +313,16 @@ def histogram(pha, binsize=1.0):
     
     return n, bins
 
-def fit(pha, min=20, line="MnKa", shift=False):
+def fit(pha, binsize=1, min=20, line="MnKa", shift=False):
     """
     Fit line spectrum by Voigt profiles
     
     Parameters (and their default values):
-        pha:    pha data (array-like)
-        min:    minimum counts to group bins (Default: 20 bins)
-        line:   line to fit (Default: MnKa)
-        shift:  treat dE as shift if True instead of scaling (Default: False)
+        pha:        pha data (array-like)
+        binsize:    size of energy bin in eV for histogram (Default: 1 eV)
+        min:        minimum counts to group bins (Default: 20 bins)
+        line:       line to fit (Default: MnKa)
+        shift:      treat dE as shift if True instead of scaling (Default: False)
     
     Return ((dE, dE_error, A, A_error, sigma, sigma_error), chi_squared, dof)
         dE:             shift from line center
@@ -339,7 +340,7 @@ def fit(pha, min=20, line="MnKa", shift=False):
         raise ValueError("No data for %s" % line)
     
     # Create histogram
-    n, bins = histogram(pha)
+    n, bins = histogram(pha, binsize=binsize)
     
     # Group bins
     gn, gbins = group_bin(n, bins, min)

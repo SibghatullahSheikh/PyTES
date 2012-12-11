@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use( 'Agg' )
 from pylab import figure, plot, errorbar, hist, xlim, loglog, xlabel, ylabel, savefig
 
-def main(pulse, noise, cutoff=None, max_shift=10, ka_min=80, kb_min=40, sigma=2, shift=False, session="Unnamed"):
+def main(pulse, noise, cutoff=None, binsize=1, max_shift=10, ka_min=80, kb_min=40, sigma=2, shift=False, session="Unnamed"):
     
     print "Session: %s" % session
     
@@ -84,18 +84,18 @@ def main(pulse, noise, cutoff=None, max_shift=10, ka_min=80, kb_min=40, sigma=2,
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    fit(mnka, ka_min, "MnKa", shift, session)
+    fit(mnka, binsize, ka_min, "MnKa", shift, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
-    fit(mnkb, kb_min, "MnKb", shift, session)
+    fit(mnkb, binsize, kb_min, "MnKb", shift, session)
     
-    return 0
+    return
 
-def fit(data, min, line, shift, session):
+def fit(data, binsize, min, line, shift, session):
     # Draw histogram
     figure()
-    n, bins = Analysis.histogram(data)
+    n, bins = Analysis.histogram(data, binsize=binsize)
     gn, gbins = Analysis.group_bin(n, bins, min=min)
     ngn = gn/(diff(gbins)*1e3)
     ngn_sigma = sqrt(gn)/(diff(gbins)*1e3)
@@ -105,7 +105,7 @@ def fit(data, min, line, shift, session):
 
     # Fit
     (dE, dE_error, A, A_error, width, width_error), chi_squared, dof = \
-            Analysis.fit(data, min=min, line=line, shift=shift)
+            Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift)
 
     # Draw fitting result
     E = linspace(bins.min(), bins.max(), 1000)
@@ -126,22 +126,25 @@ if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:s:', ['shift', 'session=', 'help'])
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:e:s:', ['shift', 'session=', 'help'])
     
     # Initialize
     cutoff = None
+    binsize = 1
     ka_min = 80
     kb_min = 40
     sigma = 3
     shift = False
     session = "Unnamed"
     
-    def usage(prog, ka_min, kb_min, sigma, session):
+    def usage():
         print """Usage: %s [options] pulse.fits noise.fits
 
 Options:
     -c cutoff
         Cut-off bin for template generation (Default: no cut-off)
+    -e binsize
+        Size of energy bin in eV for histogram creation (Default: %d)
     -a min
         Desired minimum photons to group bins for MnKa spectrum (Default: %d)
     -b min
@@ -153,11 +156,13 @@ Options:
     --session name
         Session name used for output files (Default: %s)
     -h
-        Show this usage.""" % (prog, ka_min, kb_min, sigma, session)
+        Show this usage.""" % (sys.argv[0], binsize, ka_min, kb_min, sigma, session)
     
     for o, a in opts:
         if o == "-c":
             cutoff = int(a)
+        if o == "-e":
+            binsize = float(a)
         if o == "-a":
             ka_min = int(a)
         if o == "-b":
@@ -169,13 +174,15 @@ Options:
         if o == "--session":
             session = a
         if o in ("-h", "-?", "--help"):
-            usage(sys.argv[0], ka_min, kb_min, sigma, session)
+            usage()
             exit()
 
     try:
         pulse, noise = params
     except:
-        usage(sys.argv[0], ka_min, kb_min, sigma, session)
+        usage()
         exit()
     
-    main(pulse, noise, cutoff=cutoff, ka_min=ka_min, kb_min=kb_min, shift=shift, sigma=sigma, session=session)
+    main(pulse, noise, cutoff=cutoff, binsize=binsize,
+            ka_min=ka_min, kb_min=kb_min, shift=shift,
+            sigma=sigma, session=session)
