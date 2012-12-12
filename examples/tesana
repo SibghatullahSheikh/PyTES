@@ -85,7 +85,8 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
         print "Skipped offset correction: correlation coefficient (%f) is too small" % coef
     
     # Linearity correction
-    lc_pha = Analysis.linearity_correction(oc_pha, sigma=sigma)
+    lc_pha, (a, b) = Analysis.linearity_correction(oc_pha, sigma=sigma, full=True)
+    print "Linearity correction with: PHA = %e * E^2 + %e * E" % (a, b)
     
     # Spectrum
     figure()

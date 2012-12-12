@@ -1,6 +1,5 @@
 import numpy as np
 import warnings
-from numpy.linalg import lstsq
 from scipy.special import wofz
 from scipy.optimize import curve_fit, minimize
 from Filter import median_filter
@@ -113,7 +112,7 @@ def offset_correction(pha, offset, sigma=1, thre=0.4, full=False):
     else:
         return corrected_pha
 
-def linearity_correction(pha, atom="Mn", sigma=1):
+def linearity_correction(pha, atom="Mn", sigma=1, full=False):
     """
     Perform a linearity correction for PHA
     
@@ -121,9 +120,11 @@ def linearity_correction(pha, atom="Mn", sigma=1):
         pha:    pha data (array-like)
         atom:   atom to use for correction (Default: Mn)
         sigma:  sigmas allowed for median filter (Default: 1)
+        full:   return full output if True (Default: False)
     
-    Return (pha):
+    Return (pha) if full is True otherwise (pha, (a, b)):
         pha:    corrected pha data
+        a, b:   fitting results
     """
     
     # Mn Ka/Kb Energy
@@ -136,12 +137,15 @@ def linearity_correction(pha, atom="Mn", sigma=1):
     pha_center = np.array([ ka(pha, sigma=sigma).mean(), kb(pha, sigma=sigma).mean() ])
     
     # Fitting
-    p = lstsq(np.vstack((Mn**2, Mn)).T, pha_center)[0]
+    (a, b), covt = curve_fit(lambda x, a, b: a*x**2 + b*x, Mn, pha_center)
     
     # Correction
-    corrected_pha = (-p[1] + np.sqrt(p[1]**2+4*p[0]*pha)) / (2*p[0])
-    
-    return corrected_pha
+    corrected_pha = (-b + np.sqrt(b**2+4*a*pha)) / (2*a)
+
+    if full:
+        return corrected_pha, (a, b)
+    else:
+        return corrected_pha
 
 def voigt(E, Ec, nw, gw):
     """
