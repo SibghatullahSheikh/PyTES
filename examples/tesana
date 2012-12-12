@@ -5,7 +5,7 @@ from numpy import *
 from pytes import *
 import matplotlib
 matplotlib.use( 'Agg' )
-from pylab import figure, plot, errorbar, hist, xlim, loglog, xlabel, ylabel, savefig
+from pylab import figure, plot, errorbar, hist, axvline, xlim, loglog, xlabel, ylabel, savefig
 
 def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
             ka_min=80, kb_min=40, sigma=2, shift=False,
@@ -98,28 +98,23 @@ def fit(data, binsize, min, line, shift, method, session):
     figure()
     n, bins = Analysis.histogram(data, binsize=binsize)
     
-    if method in ("cs", "ls"):
+    if method in ("cs"):
         gn, gbins = Analysis.group_bin(n, bins, min=min)
     else:
-        # No grouping in mle
+        # No grouping in mle and ls
         gn, gbins = n, bins
 
-    ngn = gn/(diff(gbins)*1e3)
-    ngn_sigma = sqrt(gn)/(diff(gbins)*1e3)
+    ngn = gn/(diff(gbins))
+    ngn_sigma = sqrt(gn)/(diff(gbins))
     cbins = (gbins[1:]+gbins[:-1])/2
 
-    if method in ("cs", "ls"):
+    if method == "cs":
         errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
     else:
-        plot(gbins[1:], ngn, drawstyle='steps', c='k')
+        hist(data, bins=gbins, histtype='step', ec='k')
 
     # Fit
-    r, v, e = Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift, method=method)
-    
-    dE, width = r
-    
-    if method in ("cs", "ls"):
-        dE_error, width_error = v
+    (dE, width), (dE_error, width_error), e = Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift, method=method)
     
     if method == "cs":
         chi_squared, dof = e
@@ -134,19 +129,16 @@ def fit(data, binsize, min, line, shift, method, session):
         plot(E, m, 'b--')
 
     xlabel('Energy\quad(eV)')
-    ylabel('Normalized Count\quad(count/keV)')
+    ylabel('Normalized Count\quad(count/eV)')
 
     savefig("%s-%s.pdf" % (session, line))
 
-    if method == "mle":
-        print "%s: %.2f eV @ Ec%+.2f eV" \
-            % (line, width, dE)
+    if method in ("mle", "ls"):
+        print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV" \
+            % (line, width, width_error, dE)
     elif method == "cs":
         print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
             % (line, width, width_error, dE, chi_squared, dof, chi_squared/dof)
-    elif method == "ls":
-        print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV" \
-            % (line, width, width_error, dE)
 
 if __name__ == '__main__':
     
@@ -175,8 +167,10 @@ Options:
         Size of energy bin in eV for histogram creation (Default: %d)
     -a min
         Desired minimum photons to group bins for MnKa spectrum (Default: %d)
+        (valid only when chi-squared fitting)
     -b min
         Desired minimum photons to group bins for MnKb spectrum (Default: %d)
+        (valid only when chi-squared fitting)
     -s sigmas
         Sigmas for median filter (Default: %d)
     --method method

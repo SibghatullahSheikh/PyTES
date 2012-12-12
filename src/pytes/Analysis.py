@@ -343,8 +343,8 @@ def _fit_cs(pha, binsize=1, min=20, line="MnKa", shift=False):
     
     # Group bins
     gn, gbins = group_bin(n, bins, min)
-    ngn = gn/(np.diff(gbins)*1e3)   # normalized counts in counts/keV
-    ngn_sigma = np.sqrt(gn)/(np.diff(gbins)*1e3)
+    ngn = gn/(np.diff(gbins))   # normalized counts in counts/eV
+    ngn_sigma = np.sqrt(gn)/(np.diff(gbins))
     
     bincenters = (gbins[1:]+gbins[:-1])/2
     
@@ -394,8 +394,8 @@ def _fit_ls(pha, binsize=1, min=20, line="MnKa", shift=False):
     
     # Group bins
     gn, gbins = group_bin(n, bins, min)
-    ngn = gn/(np.diff(gbins)*1e3)   # normalized counts in counts/keV
-    ngn_sigma = np.sqrt(gn)/(np.diff(gbins)*1e3)
+    ngn = gn/(np.diff(gbins))   # normalized counts in counts/eV
+    ngn_sigma = np.sqrt(gn)/(np.diff(gbins))
     
     bincenters = (gbins[1:]+gbins[:-1])/2
     
@@ -433,12 +433,12 @@ def _fit_mle(pha, line="MnKa", shift=False):
             warnings.simplefilter("ignore")
             return -np.log(line_model(pha, dE, width, line, shift)).sum()
     
-    res = minimize(lf, x0=(0, 1), method='Powell')
+    res = minimize(lf, x0=(0, 1), method="BFGS", options={"gtol": 1e-2})
     
     if not res.success:
         raise RuntimeError('MLE failed')
     
-    return res.x, (None), (None)
+    return res.x, np.sqrt(np.diag(np.linalg.inv(res.hess))), (None)
 
 def fit(pha, binsize=1, min=20, line="MnKa", shift=False, method='mle'):
     """
