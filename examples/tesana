@@ -3,15 +3,18 @@
 import pyfits
 from numpy import *
 from pytes import *
-import matplotlib
-matplotlib.use( 'Agg' )
-from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
 
 def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
             ka_min=80, kb_min=40, sigma=2, shift=False,
-            method="mle", session="Unnamed"):
+            method="mle", plotting=True, session="Unnamed"):
     
-    print "Session: %s" % session
+    if plotting:
+        # Import matplotlib
+        import matplotlib
+        matplotlib.use( 'Agg' )
+        from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
+        
+        print "Session: %s" % session
     
     # Open fits file and get pulse/noise data
     phl = pyfits.open(pulse)
@@ -27,38 +30,42 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     nhl.close()
     
     # Plot averaged pulse
-    figure()
-    plot(tp, Filter.average_pulse(p, max_shift=max_shift))
-    xlabel('Time\quad(s)')
-    ylabel('Averaged Pulse\quad(V)')
-    savefig('%s-averagepulse.pdf' % session)
+    if plotting:
+        figure()
+        plot(tp, Filter.average_pulse(p, max_shift=max_shift))
+        xlabel('Time\quad(s)')
+        ylabel('Averaged Pulse\quad(V)')
+        savefig('%s-averagepulse.pdf' % session)
     
     # Plot noise spectrum
-    nspec = sqrt(Filter.average_noise(n)*(dtn*n.shape[-1]))
-    figure()
-    plot(arange(len(nspec))*(dtn*n.shape[-1])**-1, nspec)
-    loglog()
-    xlabel('Frequency\quad(Hz)')
-    ylabel('Noise\quad(V/$\sqrt{\mathrm{Hz}}$)')
-    savefig('%s-noise.pdf' % session)
+    if plotting:
+        nspec = sqrt(Filter.average_noise(n)*(dtn*n.shape[-1]))
+        figure()
+        plot(arange(len(nspec))*(dtn*n.shape[-1])**-1, nspec)
+        loglog()
+        xlabel('Frequency\quad(Hz)')
+        ylabel('Noise\quad(V/$\sqrt{\mathrm{Hz}}$)')
+        savefig('%s-noise.pdf' % session)
     
     # Generate template
     t, sn = Filter.generate_template(p, n, cutoff=cutoff, max_shift=max_shift)
     
     # Plot template
-    figure()
-    plot(tp, t)
-    xlabel('Time\quad(s)')
-    ylabel('Template\quad(A.U.)')
-    savefig('%s-template.pdf' % session)
+    if plotting:
+        figure()
+        plot(tp, t)
+        xlabel('Time\quad(s)')
+        ylabel('Template\quad(A.U.)')
+        savefig('%s-template.pdf' % session)
     
     # Plot S/N ratio
-    figure()
-    plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn*sqrt(dtp*p.shape[-1]))
-    loglog()
-    xlabel('Frequency\quad(Hz)')
-    ylabel('S/N\quad(/$\sqrt{\mathrm{Hz}}$)')
-    savefig('%s-sn.pdf' % session)
+    if plotting:
+        figure()
+        plot(arange(len(sn))*(dtp*p.shape[-1])**-1, sn*sqrt(dtp*p.shape[-1]))
+        loglog()
+        xlabel('Frequency\quad(Hz)')
+        ylabel('S/N\quad(/$\sqrt{\mathrm{Hz}}$)')
+        savefig('%s-sn.pdf' % session)
     
     # Calculate baseline resolution
     print "Baseline resolution for 5.9 keV: %.2f eV" % Analysis.baseline(sn)
@@ -69,18 +76,20 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     # Offset correction
     offset = Filter.offset(p)
     oc_pha, (a, b), coef = Analysis.offset_correction(pha, offset, sigma=sigma, full=True)
+    
     if a is not None:
         print "Offset correction with: PHA = %f * (1 + %f * Offset)" % (a, b)
     
-        figure()
-        ka = Analysis.ka(vstack((pha, offset)).T, sigma=sigma)
-        plot(ka.T[1], ka.T[0], '.', c='k')
-        x_min, x_max = xlim()
-        ofs = linspace(x_min, x_max)
-        plot(ofs, a*(1+b*ofs), 'r-')
-        xlabel('Offset\quad(V)')
-        ylabel('PHA\quad(V)')
-        savefig('%s-offset.pdf' % session)
+        if plotting:
+            figure()
+            ka = Analysis.ka(vstack((pha, offset)).T, sigma=sigma)
+            plot(ka.T[1], ka.T[0], '.', c='k')
+            x_min, x_max = xlim()
+            ofs = linspace(x_min, x_max)
+            plot(ofs, a*(1+b*ofs), 'r-')
+            xlabel('Offset\quad(V)')
+            ylabel('PHA\quad(V)')
+            savefig('%s-offset.pdf' % session)
     else:
         print "Skipped offset correction: correlation coefficient (%f) is too small" % coef
     
@@ -89,44 +98,52 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     print "Linearity correction with: PHA = %e * E^2 + %e * E" % (a, b)
     
     # Spectrum
-    figure()
-    hist(lc_pha/1e3, bins=4096, histtype='stepfilled', color='y')
-    xlim(0, 7)
-    xlabel('Energy\quad(keV)')
-    ylabel('Count')
-    savefig('%s-spec.pdf' % session)
+    if plotting:
+        figure()
+        hist(lc_pha/1e3, bins=4096, histtype='stepfilled', color='y')
+        xlim(0, 7)
+        xlabel('Energy\quad(keV)')
+        ylabel('Count')
+        savefig('%s-spec.pdf' % session)
     
     # Fitting
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    fit(mnka, binsize, ka_min, "MnKa", shift, method, session)
+    fit(mnka, binsize, ka_min, "MnKa", shift, method, plotting, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
-    fit(mnkb, binsize, kb_min, "MnKb", shift, method, session)
+    fit(mnkb, binsize, kb_min, "MnKb", shift, method, plotting, session)
     
     return
 
-def fit(data, binsize, min, line, shift, method, session):
-    # Draw histogram
-    figure()
-    n, bins = Analysis.histogram(data, binsize=binsize)
+def fit(data, binsize, min, line, shift, method, plotting, session):
     
-    if method in ("cs"):
-        gn, gbins = Analysis.group_bin(n, bins, min=min)
-    else:
-        # No grouping in mle and ls
-        gn, gbins = n, bins
+    if plotting:
+        # Import matplotlib
+        import matplotlib
+        matplotlib.use( 'Agg' )
+        from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
+    
+        # Draw histogram
+        figure()
+        n, bins = Analysis.histogram(data, binsize=binsize)
+    
+        if method in ("cs"):
+            gn, gbins = Analysis.group_bin(n, bins, min=min)
+        else:
+            # No grouping in mle and ls
+            gn, gbins = n, bins
 
-    ngn = gn/(diff(gbins))
-    ngn_sigma = sqrt(gn)/(diff(gbins))
-    cbins = (gbins[1:]+gbins[:-1])/2
+        ngn = gn/(diff(gbins))
+        ngn_sigma = sqrt(gn)/(diff(gbins))
+        cbins = (gbins[1:]+gbins[:-1])/2
 
-    if method == "cs":
-        errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
-    else:
-        hist(data, bins=gbins, weights=ones(len(data))/binsize, histtype='step', ec='k')
+        if method == "cs":
+            errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
+        else:
+            hist(data, bins=gbins, weights=ones(len(data))/binsize, histtype='step', ec='k')
 
     # Fit
     (dE, width), (dE_error, width_error), e = Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift, method=method)
@@ -135,18 +152,19 @@ def fit(data, binsize, min, line, shift, method, session):
         chi_squared, dof = e
     
     # Draw fitting result
-    E = linspace(bins.min(), bins.max(), 1000)
+    if plotting:
+        E = linspace(bins.min(), bins.max(), 1000)
     
-    model = Analysis.normalization(ngn, gbins, dE, width, line=line, shift=shift) \
-                * Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
-    plot(E, model[0], 'r-')
-    for m in model[1:]:
-        plot(E, m, 'b--')
+        model = Analysis.normalization(ngn, gbins, dE, width, line=line, shift=shift) \
+                    * Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
+        plot(E, model[0], 'r-')
+        for m in model[1:]:
+            plot(E, m, 'b--')
 
-    xlabel('Energy\quad(eV)')
-    ylabel('Normalized Count\quad(count/eV)')
+        xlabel('Energy\quad(eV)')
+        ylabel('Normalized Count\quad(count/eV)')
 
-    savefig("%s-%s.pdf" % (session, line))
+        savefig("%s-%s.pdf" % (session, line))
 
     if method in ("mle", "ls"):
         print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV" \
@@ -160,7 +178,7 @@ if __name__ == '__main__':
     import sys, getopt
     
     opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:e:s:',
-                            ['shift', 'method=', 'session=', 'help'])
+                            ['shift', 'method=', 'session=', 'noplot', 'help'])
     
     # Initialize
     cutoff = None
@@ -170,6 +188,7 @@ if __name__ == '__main__':
     sigma = 3
     shift = False
     method = "mle"
+    plotting = True
     session = "Unnamed"
     
     def usage():
@@ -195,6 +214,8 @@ Options:
         Treat dE as energy shift instead of scaling
     --session name
         Session name used for output files (Default: %s)
+    --noplot
+        Suppress plots
     -h
         Show this usage.""" % (sys.argv[0], binsize, ka_min, kb_min, sigma, method, session)
     
@@ -219,6 +240,8 @@ Options:
                 exit()
         if o == "--session":
             session = a
+        if o == "--noplot":
+            plotting = False
         if o in ("-h", "-?", "--help"):
             usage()
             exit()
@@ -231,4 +254,5 @@ Options:
     
     main(pulse, noise, cutoff=cutoff, binsize=binsize,
             ka_min=ka_min, kb_min=kb_min, shift=shift,
-            sigma=sigma, method=method, session=session)
+            sigma=sigma, method=method, plotting=plotting,
+            session=session)
