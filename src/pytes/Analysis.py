@@ -65,7 +65,7 @@ def kb(pha, sigma=1):
     
     return kb_pha[kb_mask]
 
-def offset_correction(pha, offset, sigma=1):
+def offset_correction(pha, offset, sigma=1, thre=0.4, full=False):
     """
     Perform an offset (DC level) correction for PHA
     
@@ -73,9 +73,17 @@ def offset_correction(pha, offset, sigma=1):
         pha:    pha data (array-like)
         offset: offset data (array-like)
         sigma:  sigmas allowed for median filter (Default: 1)
+        thre:   correlation coefficient threshold (Default: 0.4)
+        full:   return full output if True (Default: False)
     
-    Return (pha):
+    Return (pha) if full is True otherwise (pha, (a, b), coef):
         pha:    corrected pha data
+        a, b:   fitting results
+        coef:   correlation coefficient
+    
+    Note:
+        - Correction will not be done if absolute correlation coefficient
+          is lower than threshold.
     """
     
     # Sanity check
@@ -87,10 +95,23 @@ def offset_correction(pha, offset, sigma=1):
     
     # Correction using K-alpha
     ka_pha, ka_offset = ka(data, sigma=sigma).T
-    ka_a, ka_b = np.polyfit(ka_offset, ka_pha, 1)
-    corrected_pha = pha/(ka_a*offset+ka_b)*ka_b
     
-    return corrected_pha
+    # Check correlation coefficient
+    coef = np.corrcoef(((ka_pha), (ka_offset)))[0,1]
+    
+    # Perform correction when corrcoef exceeds threshold
+    if abs(coef) > thre:
+        popt, covt = curve_fit(lambda x, a, b: a*(1+b*x), ka_offset, ka_pha)
+        ka_a, ka_b = popt
+        corrected_pha = pha/(1+ka_b*offset)
+    else:
+        corrected_pha = pha
+        ka_a, ka_b = None, None
+    
+    if full:
+        return corrected_pha, (ka_a, ka_b), coef
+    else:
+        return corrected_pha
 
 def linearity_correction(pha, atom="Mn", sigma=1):
     """

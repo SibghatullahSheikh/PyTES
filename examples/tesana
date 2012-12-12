@@ -5,7 +5,7 @@ from numpy import *
 from pytes import *
 import matplotlib
 matplotlib.use( 'Agg' )
-from pylab import figure, plot, errorbar, hist, axvline, xlim, loglog, xlabel, ylabel, savefig
+from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
 
 def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
             ka_min=80, kb_min=40, sigma=2, shift=False,
@@ -68,7 +68,21 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     
     # Offset correction
     offset = Filter.offset(p)
-    oc_pha = Analysis.offset_correction(pha, offset, sigma=sigma)
+    oc_pha, (a, b), coef = Analysis.offset_correction(pha, offset, sigma=sigma, full=True)
+    if a is not None:
+        print "Offset correction with: PHA = %f * (1 + %f * Offset)" % (a, b)
+    
+        figure()
+        ka = Analysis.ka(vstack((pha, offset)).T, sigma=sigma)
+        plot(ka.T[1], ka.T[0], '.', c='k')
+        x_min, x_max = xlim()
+        ofs = linspace(x_min, x_max)
+        plot(ofs, a*(1+b*ofs), 'r-')
+        xlabel('Offset\quad(V)')
+        ylabel('PHA\quad(V)')
+        savefig('%s-offset.pdf' % session)
+    else:
+        print "Skipped offset correction: correlation coefficient (%f) is too small" % coef
     
     # Linearity correction
     lc_pha = Analysis.linearity_correction(oc_pha, sigma=sigma)
