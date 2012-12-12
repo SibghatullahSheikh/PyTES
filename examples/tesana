@@ -68,10 +68,10 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     
     # Offset correction
     offset = Filter.offset(p)
-    oc_pha = Analysis.offset_correction(pha, offset, sigma=2)
+    oc_pha = Analysis.offset_correction(pha, offset, sigma=sigma)
     
     # Linearity correction
-    lc_pha = Analysis.linearity_correction(oc_pha, sigma=2)
+    lc_pha = Analysis.linearity_correction(oc_pha, sigma=sigma)
     
     # Spectrum
     figure()
@@ -111,7 +111,7 @@ def fit(data, binsize, min, line, shift, method, session):
     if method == "cs":
         errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
     else:
-        hist(data, bins=gbins, histtype='step', ec='k')
+        hist(data, bins=gbins, weights=ones(len(data))/binsize, histtype='step', ec='k')
 
     # Fit
     (dE, width), (dE_error, width_error), e = Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift, method=method)
