@@ -465,6 +465,7 @@ def _fit_mle(pha, line="MnKa", shift=False):
     if not res.success:
         raise RuntimeError('MLE failed')
     
+    # Hessian matrix is somehow already inversed. No need to inverse here.
     return res.x, np.sqrt(np.diag(res.hess)), (None)
 
 def fit(pha, binsize=1, min=20, line="MnKa", shift=False, method='mle'):
