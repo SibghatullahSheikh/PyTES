@@ -459,14 +459,26 @@ def _fit_mle(pha, line="MnKa", shift=False):
             warnings.simplefilter("ignore")
             return -np.log(line_model(pha, dE, width, line, shift)).sum()
     
+    # Energy resolution estimation (n.sum() / n.max())
+    n, bins = histogram(pha)
+    
     # Minimize
-    res = minimize(lf, x0=(0, 1), method="BFGS", options={"gtol": 1e-2})
+    res = minimize(lf, x0=(0, n.sum()/n.max()), method="Powell")
     
     if not res.success:
         raise RuntimeError('MLE failed')
     
-    # Hessian matrix is somehow already inversed. No need to inverse here.
-    return res.x, np.sqrt(np.diag(res.hess)), (None)
+    # Calculate Hessian matrix for standard error
+    try:
+        import numdifftools as nd
+    except ImportError:
+        print "Warning: Plese install numdifftools to calculate standard error."
+        
+        return res.x, (0, 0), (None)
+    
+    hess = nd.Hessian(lf)
+    
+    return res.x, np.sqrt(np.diag(np.linalg.inv(np.identity(2)*hess(res.x)))), (None)
 
 def fit(pha, binsize=1, min=20, line="MnKa", shift=False, method='mle'):
     """
