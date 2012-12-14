@@ -5,7 +5,7 @@ from numpy import *
 from pytes import *
 
 def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
-            ka_min=80, kb_min=40, sigma=2, shift=False,
+            ka_min=80, kb_min=40, thre=0.4, sigma=2, shift=False,
             method="mle", plotting=True, session="Unnamed"):
     
     if plotting:
@@ -75,7 +75,7 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     
     # Offset correction
     offset = Filter.offset(p)
-    oc_pha, (a, b), coef = Analysis.offset_correction(pha, offset, sigma=sigma, full=True)
+    oc_pha, (a, b), coef = Analysis.offset_correction(pha, offset, thre=thre, sigma=sigma, full=True)
     
     if a is not None:
         print "Offset correction with: PHA = %f * (1 + %f * Offset)" % (a, b)
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     
     import sys, getopt
     
-    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:c:e:s:',
+    opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:t:c:e:s:',
                             ['shift', 'method=', 'session=', 'noplot', 'help'])
     
     # Initialize
@@ -185,6 +185,7 @@ if __name__ == '__main__':
     binsize = 1
     ka_min = 80
     kb_min = 40
+    thre = 0.4
     sigma = 3
     shift = False
     method = "mle"
@@ -205,6 +206,8 @@ Options:
     -b min
         Desired minimum photons to group bins for MnKb spectrum (Default: %d)
         (valid only when chi-squared fitting)
+    -t threshold
+        Threshold of correlation coef for offset correction (Default: %.1f)
     -s sigmas
         Sigmas for median filter (Default: %d)
     --method method
@@ -217,7 +220,7 @@ Options:
     --noplot
         Suppress plots
     -h
-        Show this usage.""" % (sys.argv[0], binsize, ka_min, kb_min, sigma, method, session)
+        Show this usage.""" % (sys.argv[0], binsize, ka_min, kb_min, thre, sigma, method, session)
     
     for o, a in opts:
         if o == "-c":
@@ -226,6 +229,8 @@ Options:
             binsize = float(a)
         if o == "-a":
             ka_min = int(a)
+        if o == "-t":
+            thre = float(a)
         if o == "-b":
             kb_min = int(a)
         if o == "-s":
@@ -253,6 +258,6 @@ Options:
         exit()
     
     main(pulse, noise, cutoff=cutoff, binsize=binsize,
-            ka_min=ka_min, kb_min=kb_min, shift=shift,
-            sigma=sigma, method=method, plotting=plotting,
-            session=session)
+            ka_min=ka_min, kb_min=kb_min, thre=thre,
+            shift=shift, sigma=sigma, method=method,
+            plotting=plotting, session=session)
