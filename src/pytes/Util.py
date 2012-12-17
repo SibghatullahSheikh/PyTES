@@ -9,11 +9,11 @@ def savefits(data, filename, sps=1e6, bits=14, noise=False, clobber=True):
     Save pulse/noise to FITS file
     """
     
-    # Vectorized int
-    vint = np.vectorize(int)
+    # Vectorized round
+    vround = np.vectorize(round)
     
     # Prepare data
-    data = vint(np.array(data)*2**(bits-1))
+    data = vround(np.array(data)*2**(bits-1))
     
     # Column Name
     if noise:
