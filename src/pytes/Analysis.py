@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from scipy.special import wofz
 from scipy.stats import cauchy
-from scipy.optimize import curve_fit, minimize
+from scipy.optimize import curve_fit, fmin
 from Filter import median_filter
 from Constants import *
 
@@ -181,7 +181,7 @@ def lorentzian(E, Ec, nw):
 
     gamma = fwhm2gamma(nw)
 
-    return caucy.pdf(E, loc=Ec, scale=gamma)
+    return cauchy.pdf(E, loc=Ec, scale=gamma)
 
 def sigma2fwhm(sigma):
     """
@@ -379,7 +379,7 @@ def _fit_cs(pha, binsize=1, min=20, line="MnKa", shift=False):
         return A * line_model(E, dE, width, line, shift)
     
     popt, pcov = curve_fit(model, bincenters, ngn,
-                        p0=(0, max(ngn), ngn.sum()/max(ngn)), sigma=ngn_sigma)
+                        p0=(0, max(ngn), ngn.sum()/max(ngn)-6), sigma=ngn_sigma)
 
     if len(pcov) == 1:
         raise Exception("Fitting failed for %s" % line)
@@ -430,7 +430,7 @@ def _fit_ls(pha, binsize=1, min=20, line="MnKa", shift=False):
         return A * line_model(E, dE, width, line, shift)
     
     popt, pcov = curve_fit(model, bincenters, ngn,
-                        p0=(0, max(ngn), ngn.sum()/max(ngn)))
+                        p0=(0, max(ngn), ngn.sum()/max(ngn)-6))
 
     if len(pcov) == 1:
         raise Exception("Fitting failed for %s" % line)
@@ -463,11 +463,8 @@ def _fit_mle(pha, line="MnKa", shift=False):
     # Energy resolution estimation (n.sum() / n.max())
     n, bins = histogram(pha)
     
-    # Minimize
-    res = minimize(lf, x0=(0, n.sum()/n.max()), method="Powell")
-    
-    if not res.success:
-        raise RuntimeError('MLE failed')
+    # Minimize (Downhill)
+    res = fmin(lf, x0=(0, n.sum()/n.max()-6), disp=False)
     
     # Calculate Hessian matrix for standard error
     try:
@@ -475,11 +472,11 @@ def _fit_mle(pha, line="MnKa", shift=False):
     except ImportError:
         print "Warning: Plese install numdifftools to calculate standard error."
         
-        return res.x, (0, 0), (None)
+        return res, (0, 0), (None)
     
     hess = nd.Hessian(lf)
     
-    return res.x, np.sqrt(np.diag(np.linalg.inv(np.identity(2)*hess(res.x)))), (None)
+    return res, np.sqrt(np.diag(np.linalg.inv(np.identity(2)*hess(res)))), (None)
 
 def fit(pha, binsize=1, min=20, line="MnKa", shift=False, method='mle'):
     """
