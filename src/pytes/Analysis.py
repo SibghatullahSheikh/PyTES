@@ -2,7 +2,7 @@ import numpy as np
 import warnings
 from scipy.special import wofz
 from scipy.stats import cauchy
-from scipy.optimize import curve_fit, fmin
+from scipy.optimize import curve_fit, fmin_l_bfgs_b
 from Filter import median_filter
 from Constants import *
 
@@ -161,7 +161,7 @@ def voigt(E, Ec, nw, gw):
     Return (voigt)
         voigt:  Voigt profile
     """
-     
+    
     z = (E - Ec + 1j*fwhm2gamma(nw)) / (fwhm2sigma(gw)*np.sqrt(2))
 
     return wofz(z).real / (fwhm2sigma(gw)*np.sqrt(2*np.pi))
@@ -269,6 +269,9 @@ def line_model(E, dE=0, width=0, line="MnKa", shift=False, full=False):
     # Sanity check
     if not FS.has_key(line):
         raise ValueError("No data for %s" % line)
+    
+    # Boundary check
+    width = 0 if width < 0 else width
     
     # Center energy
     Ec = np.exp(np.log(np.asarray(FS[line])[:,(0,2)]).sum(axis=1)).sum()
@@ -463,8 +466,9 @@ def _fit_mle(pha, line="MnKa", shift=False):
     # Energy resolution estimation (n.sum() / n.max())
     n, bins = histogram(pha)
     
-    # Minimize (Downhill)
-    res = fmin(lf, x0=(0, n.sum()/n.max()-6), disp=False)
+    # Minimize (L-BFGS-B)
+    res = fmin_l_bfgs_b(lf, x0=(0, n.sum()/n.max()-6), approx_grad=True, epsilon=1e-6,
+                    bounds=((-100,100), (0, n.sum()/n.max()*2)), disp=False)[0]
     
     # Calculate Hessian matrix for standard error
     try:
