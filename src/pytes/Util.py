@@ -4,7 +4,7 @@ import time
 from struct import unpack
 from Filter import median_filter
 
-def savefits(data, filename, sps=1e6, bits=14, noise=False):
+def savefits(data, filename, sps=1e6, bits=14, noise=False, clobber=True):
     """
     Save pulse/noise to FITS file
     """
@@ -55,7 +55,7 @@ def savefits(data, filename, sps=1e6, bits=14, noise=False):
     
     # Write to FITS
     thdulist = pf.HDUList([hdu, tbhdu])
-    thdulist.writeto(filename)
+    thdulist.writeto(filename, clobber=clobber)
 
 def yopen(filenumber, summary=False, nf=None, tmin=None, tmax=None):
     """
