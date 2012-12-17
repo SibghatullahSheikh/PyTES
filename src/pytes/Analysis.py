@@ -1,6 +1,7 @@
 import numpy as np
 import warnings
 from scipy.special import wofz
+from scipy.stats import cauchy
 from scipy.optimize import curve_fit, minimize
 from Filter import median_filter
 from Constants import *
@@ -180,7 +181,7 @@ def lorentzian(E, Ec, nw):
 
     gamma = fwhm2gamma(nw)
 
-    return 1.0/np.pi * (gamma / ((E-Ec)**2 + gamma**2))
+    return caucy.pdf(E, loc=Ec, scale=gamma)
 
 def sigma2fwhm(sigma):
     """
