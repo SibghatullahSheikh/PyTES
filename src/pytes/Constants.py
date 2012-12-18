@@ -4,6 +4,11 @@
 
 import numpy as np
 
+## Line Energy
+LE = {
+    "Mn": (5893.98, 6486.372)
+}
+
 ## Fine Structure
 FS = {
     "MnKa": (
@@ -20,12 +25,4 @@ FS = {
         (6477.73, 13.22, 0.234),    # beta_c
         (6490.06, 1.81, 0.164),     # beta_d
         (6488.83, 2.81, 0.114))     # beta_e
-}
-
-## Line Energy
-LE = {
-    "Mn": (
-        np.exp(np.log(np.asarray(FS["MnKa"])[:,(0,2)]).sum(axis=1)).sum(),
-        np.exp(np.log(np.asarray(FS["MnKb"])[:,(0,2)]).sum(axis=1)).sum()
-    )
 }
