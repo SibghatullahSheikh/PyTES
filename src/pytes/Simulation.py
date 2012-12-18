@@ -1,5 +1,4 @@
 import numpy as np
-import pyfits
 from scipy.stats import norm, cauchy
 from pytes import Analysis, Pulse, Constants
 
@@ -89,7 +88,7 @@ def random(pdf, N, min, max):
     
     return valid[:N]
 
-def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn", talign=True):
+def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn", ratio=0.9, talign=True):
     """
     Generate pulse (Ka and Kb) and noise
     
@@ -101,6 +100,8 @@ def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn", talign
         t:      sampling time (Default: 2ms)
         Emax:   max energy in eV (Default: 10keV)
         atom:   atom to simulate (Default: Mn)
+        ratio:  Ka ratio (Default: 0.9)
+        taling: vary pulse alignment (Default: True)
     
     Return (pulse, noise):
         pulse:  simulated pulse data (NxM array-like)
@@ -111,8 +112,8 @@ def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn", talign
     """
     
     # Simulate Ka and Kb Lines
-    e = np.concatenate((_simulate_ka(N*0.9, width, noise, sps, t, atom),
-                        _simulate_kb(N*0.1, width, noise, sps, t, atom)))
+    e = np.concatenate((line(int(N*ratio), width, atom+"Ka"),
+                        line(int(N-N*ratio), width, atom+"Kb")))
     
     # Convert energy to PHA
     pha = e / Emax
@@ -131,71 +132,32 @@ def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn", talign
     n = white(sigma=noise, points=points, t=t)
     
     return p, n
-    
-def _simulate_ka(N, width, noise=3e-6, sps=1e6, t=2e-3, atom="Mn"):
+
+def line(N, width, line="MnKa"):
     """
-    Simulate Ka Line
+    Simulate Ka/Kb Line
     
     Parameters (and their default values):
         N:      desired number of pulse
         width:  width (FWHM) of gaussian (voigt) profile
-        noise:  white noise level in V/srHz (Default: 3uV/srHz)
-        sps:    sampling per second (Default: 1Msps)
-        t:      sampling time (Default: 2ms)
-        atom:   atom to simulate (Default: Mn)
+        line:   line to simulate (Default: MnKa)
     
-    Return (ka):
-        ka:     simulated data
-    """
-    
-    if width == 0:
-        e = np.array([])
-            
-        # Simulate Ka Line
-        fs = np.asarray(Constants.FS[atom + "Ka"])
-        for f in fs[fs.T[2].argsort()]:
-            e = np.concatenate((e, cauchy.rvs(loc=f[0], scale=Analysis.fwhm2gamma(f[1]), size=int(f[2]*N))))
-        e = np.concatenate((e, cauchy.rvs(loc=f[0], scale=Analysis.fwhm2gamma(f[1]), size=int(N-len(e)))))
-
-    else:
-        # Simulate Ka Line
-        pdf = lambda E: Analysis.line_model(E, 0, width, line=atom+"Ka")
-        Ec = np.array(Constants.FS[atom+"Ka"])[:,0]
-        _Emin = np.min(Ec) - width*50
-        _Emax = np.max(Ec) + width*50
-        e = random(pdf, N, _Emin, _Emax)
-    
-    return e
-
-def _simulate_kb(N, width, noise=3e-6, sps=1e6, t=2e-3, atom="Mn"):
-    """
-    Simulate Kb Line
-    
-    Parameters (and their default values):
-        N:      desired number of pulse
-        width:  width (FWHM) of gaussian (voigt) profile
-        noise:  white noise level in V/srHz (Default: 3uV/srHz)
-        sps:    sampling per second (Default: 1Msps)
-        t:      sampling time (Default: 2ms)
-        atom:   atom to simulate (Default: Mn)
-    
-    Return (kb):
-        kb:     simulated data
+    Return (e):
+        e:      simulated data
     """
 
     if width == 0:
+        # Simulate by Cauchy (Lorentzian)
         e = np.array([])
-
-        # Simulate Kb Line
-        fs = np.asarray(Constants.FS[atom + "Kb"])
+        fs = np.asarray(Constants.FS[line])
         for f in fs[fs.T[2].argsort()]:
             e = np.concatenate((e, cauchy.rvs(loc=f[0], scale=Analysis.fwhm2gamma(f[1]), size=int(f[2]*N))))
         e = np.concatenate((e, cauchy.rvs(loc=f[0], scale=Analysis.fwhm2gamma(f[1]), size=int(N-len(e)))))
         
     else:
-        # Simulate Kb Line
-        pdf = lambda E: Analysis.line_model(E, 0, width, line=atom+"Kb")
-        Ec = np.array(Constants.FS[atom+"Kb"])[:,0]
+        # Simulate by Voigt
+        pdf = lambda E: Analysis.line_model(E, 0, width, line=line)
+        Ec = np.array(Constants.FS[line])[:,0]
         _Emin = np.min(Ec) - width*50
         _Emax = np.max(Ec) + width*50
         e = random(pdf, N, _Emin, _Emax)
