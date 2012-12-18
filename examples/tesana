@@ -6,7 +6,7 @@ from pytes import *
 
 def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
             ka_min=80, kb_min=40, thre=0.4, sigma=2, shift=False,
-            method="mle", plotting=True, session="Unnamed"):
+            kbfit=False, method="mle", plotting=True, session="Unnamed"):
     
     if plotting:
         # Import matplotlib
@@ -110,75 +110,84 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    fit(mnka, binsize, ka_min, "MnKa", shift, method, plotting, session)
+    dE, width = fit(mnka, binsize, ka_min, "MnKa", shift, method)
+    if plotting:
+        plot_line(mnka, binsize, min, "MnKa", shift, method, dE, width, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
-    fit(mnkb, binsize, kb_min, "MnKb", shift, method, plotting, session)
-    
-    return
-
-def fit(data, binsize, min, line, shift, method, plotting, session):
-    
+    if kbfit:
+        dE, width = fit(mnkb, binsize, kb_min, "MnKb", shift, method)
     if plotting:
-        # Import matplotlib
-        import matplotlib
-        matplotlib.use( 'Agg' )
-        from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
+        plot_line(mnkb, binsize, min, "MnKb", shift, method, dE, width, session)
+
+def plot_line(data, binsize, min, line, shift, method, dE, width, session):
+
+    # Import matplotlib
+    import matplotlib
+    matplotlib.use( 'Agg' )
+    from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
     
-        # Draw histogram
-        figure()
-        n, bins = Analysis.histogram(data, binsize=binsize)
+    # Draw histogram
+    figure()
+    n, bins = Analysis.histogram(data, binsize=binsize)
     
-        if method in ("cs"):
-            gn, gbins = Analysis.group_bin(n, bins, min=min)
-        else:
-            # No grouping in mle and ls
-            gn, gbins = n, bins
+    if method in ("cs"):
+        gn, gbins = Analysis.group_bin(n, bins, min=min)
+    else:
+        # No grouping in mle and ls
+        gn, gbins = n, bins
 
-        ngn = gn/(diff(gbins))
-        ngn_sigma = sqrt(gn)/(diff(gbins))
-        cbins = (gbins[1:]+gbins[:-1])/2
+    ngn = gn/(diff(gbins))
+    ngn_sigma = sqrt(gn)/(diff(gbins))
+    cbins = (gbins[1:]+gbins[:-1])/2
 
-        if method == "cs":
-            errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
-        else:
-            hist(data, bins=gbins, weights=ones(len(data))/binsize, histtype='step', ec='k')
+    if method == "cs":
+        errorbar(cbins, ngn, yerr=ngn_sigma, xerr=diff(gbins)/2, capsize=0, ecolor='k', fmt=None)
+    else:
+        hist(data, bins=gbins, weights=ones(len(data))/binsize, histtype='step', ec='k')
 
+    E = linspace(bins.min(), bins.max(), 1000)
+    
+    model = Analysis.normalization(ngn, gbins, dE, width, line=line, shift=shift) \
+                * Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
+    
+    # Plot theoretical model
+    plot(E, model[0], 'r-')
+    
+    # Plot fine structures
+    for m in model[1:]:
+        plot(E, m, 'b--')
+
+    xlabel('Energy\quad(eV)')
+    ylabel('Normalized Count\quad(count/eV)')
+
+    savefig("%s-%s.pdf" % (session, line))
+
+
+def fit(data, binsize, min, line, shift, method):
+    
     # Fit
     (dE, width), (dE_error, width_error), e = Analysis.fit(data, binsize=binsize, min=min, line=line, shift=shift, method=method)
     
     if method == "cs":
         chi_squared, dof = e
     
-    # Draw fitting result
-    if plotting:
-        E = linspace(bins.min(), bins.max(), 1000)
-    
-        model = Analysis.normalization(ngn, gbins, dE, width, line=line, shift=shift) \
-                    * Analysis.line_model(E, dE, width, line=line, shift=shift, full=True)
-        plot(E, model[0], 'r-')
-        for m in model[1:]:
-            plot(E, m, 'b--')
-
-        xlabel('Energy\quad(eV)')
-        ylabel('Normalized Count\quad(count/eV)')
-
-        savefig("%s-%s.pdf" % (session, line))
-
     if method in ("mle", "ls"):
         print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV" \
             % (line, width, width_error, dE)
     elif method == "cs":
         print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
             % (line, width, width_error, dE, chi_squared, dof, chi_squared/dof)
+    
+    return dE, width
 
 if __name__ == '__main__':
     
     import sys, getopt
     
     opts, params = getopt.getopt(sys.argv[1:], 'h?a:b:t:c:e:s:',
-                            ['shift', 'method=', 'session=', 'noplot', 'help'])
+                            ['shift', 'method=', 'kbfit', 'session=', 'noplot', 'help'])
     
     # Initialize
     cutoff = None
@@ -189,6 +198,7 @@ if __name__ == '__main__':
     sigma = 3
     shift = False
     method = "mle"
+    kbfit = False
     plotting = True
     session = "Unnamed"
     
@@ -202,10 +212,10 @@ Options:
         Size of energy bin in eV for histogram creation (Default: %d)
     -a min
         Desired minimum photons to group bins for MnKa spectrum (Default: %d)
-        (valid only when chi-squared fitting)
+        (valid only for chi-squared fitting)
     -b min
         Desired minimum photons to group bins for MnKb spectrum (Default: %d)
-        (valid only when chi-squared fitting)
+        (valid only for chi-squared fitting)
     -t threshold
         Threshold of correlation coef for offset correction (Default: %.1f)
     -s sigmas
@@ -215,6 +225,8 @@ Options:
         or ls (least-squared) (Default: %s)
     --shift
         Treat dE as energy shift instead of scaling
+    --kbfit
+        Fit Kb line too
     --session name
         Session name used for output files (Default: %s)
     --noplot
@@ -237,6 +249,8 @@ Options:
             sigma = float(a)
         if o == "--shift":
             shift = True
+        if o == "--kbfit":
+            kbfit = True
         if o == "--method":
             if a.lower() in ("mle", "cs", "ls"):
                 method = a.lower()
@@ -259,5 +273,5 @@ Options:
     
     main(pulse, noise, cutoff=cutoff, binsize=binsize,
             ka_min=ka_min, kb_min=kb_min, thre=thre,
-            shift=shift, sigma=sigma, method=method,
+            shift=shift, kbfit=kbfit, sigma=sigma, method=method,
             plotting=plotting, session=session)
