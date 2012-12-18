@@ -110,23 +110,26 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     
     ## MnKa
     mnka = Analysis.ka(lc_pha, sigma=sigma)
-    dE, width = fit(mnka, binsize, ka_min, "MnKa", shift, method)
+    dE, width, width_error = fit(mnka, binsize, ka_min, "MnKa", shift, method)
     if plotting:
-        plot_line(mnka, binsize, min, "MnKa", shift, method, dE, width, session)
+        plot_line(mnka, binsize, min, "MnKa", shift, method, dE, width, width_error, session)
 
     ## MnKb
     mnkb = Analysis.kb(lc_pha, sigma=sigma)
     if kbfit:
-        dE, width = fit(mnkb, binsize, kb_min, "MnKb", shift, method)
+        dE, width, width_error = fit(mnkb, binsize, kb_min, "MnKb", shift, method)
+    else:
+        width_error = None
+    
     if plotting:
-        plot_line(mnkb, binsize, min, "MnKb", shift, method, dE, width, session)
+        plot_line(mnkb, binsize, min, "MnKb", shift, method, dE, width, width_error, session)
 
-def plot_line(data, binsize, min, line, shift, method, dE, width, session):
+def plot_line(data, binsize, min, line, shift, method, dE, width, width_error, session):
 
     # Import matplotlib
     import matplotlib
     matplotlib.use( 'Agg' )
-    from pylab import figure, plot, errorbar, hist, axvline, xlim, ylim, loglog, xlabel, ylabel, savefig
+    from pylab import figure, plot, errorbar, hist, annotate, xlim, ylim, loglog, xlabel, ylabel, savefig
     
     # Draw histogram
     figure()
@@ -162,6 +165,16 @@ def plot_line(data, binsize, min, line, shift, method, dE, width, session):
     xlabel('Energy\quad(eV)')
     ylabel('Normalized Count\quad(count/eV)')
 
+    if width_error is not None:
+        anon = 'FWHM$=%.2f\pm%.2f$ eV' % (width, width_error)
+    else:
+        anon = 'FWHM$=%.2f$ eV (Fixed)' % width
+
+    annotate(anon, xy=(-10, -10),
+                xycoords='axes points',
+                horizontalalignment='right', verticalalignment='top',
+                fontsize=20)
+
     savefig("%s-%s.pdf" % (session, line))
 
 
@@ -180,7 +193,7 @@ def fit(data, binsize, min, line, shift, method):
         print "%s: %.2f +/- %.2f eV @ Ec%+.2f eV (Red. chi^2 = %.1f/%d = %.2f)" \
             % (line, width, width_error, dE, chi_squared, dof, chi_squared/dof)
     
-    return dE, width
+    return dE, width, width_error
 
 if __name__ == '__main__':
     
