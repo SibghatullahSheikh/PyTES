@@ -89,7 +89,7 @@ def random(pdf, N, min, max):
     
     return valid[:N]
 
-def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn"):
+def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn", talign=True):
     """
     Generate pulse (Ka and Kb) and noise
     
@@ -117,10 +117,15 @@ def simulate(N, width, noise=3e-6, sps=1e6, t=2e-3, Emax=10e3, atom="Mn"):
     # Convert energy to PHA
     pha = e / Emax
     
+    # Vary talign?
+    if talign:
+        ta = np.random.uniform(size=N) - 0.5
+    else:
+        ta = 0
+    
     # Generate pulses and noises
     points = (N, int(sps*t))
-    p = pulse(pha, points=points, t=t, duty=0.1,
-                talign=np.random.uniform(size=N)-0.5) + \
+    p = pulse(pha, points=points, t=t, duty=0.1, talign=ta) + \
                 white(sigma=noise, points=points, t=t)
     
     n = white(sigma=noise, points=points, t=t)

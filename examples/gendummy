@@ -5,7 +5,7 @@ from functools import partial
 from numpy import *
 from pytes import *
 
-def main(N, fwhm, noise, bits, sps, t, prefix, batch=1000):
+def main(N, fwhm, noise, bits, sps, t, talign, prefix, batch=1000):
     
     print "Simulating %d pulses/noises. This takes bit long time..." % N
     
@@ -15,11 +15,11 @@ def main(N, fwhm, noise, bits, sps, t, prefix, batch=1000):
     pool = Pool(cpu_count())
     lock = Lock()
     while _N > batch:
-        result_list.append(pool.apply_async(Simulation.simulate, args=(batch, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}))
+        result_list.append(pool.apply_async(Simulation.simulate, args=(batch, fwhm), kwds={'noise':noise, 'sps':sps, 't':t, 'talign': talign}))
         _N -= batch
     
     if _N > 0:
-        result_list.append(pool.apply_async(Simulation.simulate, args=(_N, fwhm), kwds={'noise':noise, 'sps':sps, 't':t}))
+        result_list.append(pool.apply_async(Simulation.simulate, args=(_N, fwhm), kwds={'noise':noise, 'sps':sps, 't':t, 'talign': talign}))
     
     pool.close()
     pool.join()
@@ -31,8 +31,24 @@ def main(N, fwhm, noise, bits, sps, t, prefix, batch=1000):
     
     return 0
 
-def usage(prog, N, prefix, noise, fwhm, bits, sps, t):
-    print """Usage: %s [options]
+if __name__ == '__main__':
+    
+    import sys, getopt
+    
+    opts, params = getopt.getopt(sys.argv[1:], 'h?c:p:n:e:b:s:t:f', ['help'])
+    
+    # Initialize
+    N = 1000
+    prefix = "dummy"
+    noise = 3e-6
+    fwhm = 0
+    bits = 16
+    sps = 1e6
+    t = 2e-3
+    talign = True
+    
+    def usage():
+        print """Usage: %s [options]
 
 Options:
     -c counts
@@ -49,23 +65,10 @@ Options:
         Sampling per second for dummy pulse/noise. (Default: %.2e sps)
     -t time
         Sampling time for dummy pulse/noise. (Default: %.2e s)
+    -f
+        No variance in pulse alignment.
     -h
-        Show this usage.""" % (prog, N, prefix, noise, fwhm, bits, sps, t)
-
-if __name__ == '__main__':
-    
-    import sys, getopt
-    
-    opts, params = getopt.getopt(sys.argv[1:], 'h?c:p:n:e:b:s:t:', ['help'])
-    
-    # Initialize
-    N = 1000
-    prefix = "dummy"
-    noise = 3e-6
-    fwhm = 0
-    bits = 16
-    sps = 1e6
-    t = 2e-3
+        Show this usage.""" % (sys.argv[0], N, prefix, noise, fwhm, bits, sps, t)    
     
     for o, a in opts:
         if o == "-c":
@@ -82,8 +85,10 @@ if __name__ == '__main__':
             sps = float(a)
         if o == "-t":
             t = float(a)
+        if o == "-f":
+            talign = False
         if o in ("-h", "-?", "--help"):
-            usage(sys.argv[0], N, prefix, noise, fwhm, bits, sps, t)
+            usage()
             exit()
  
-    main(N, fwhm, noise, bits, sps, t, prefix)
+    main(N, fwhm, noise, bits, sps, t, talign, prefix)
