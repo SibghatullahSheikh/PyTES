@@ -382,7 +382,7 @@ def _fit_cs(pha, binsize=1, min=20, line="MnKa", shift=False):
         return A * line_model(E, dE, width, line, shift)
     
     popt, pcov = curve_fit(model, bincenters, ngn,
-                        p0=(0, max(ngn), ngn.sum()/max(ngn)-6), sigma=ngn_sigma)
+                        p0=(0, max(ngn), float(ngn.sum())/max(ngn)-6), sigma=ngn_sigma)
 
     if len(pcov) == 1:
         raise Exception("Fitting failed for %s" % line)
@@ -433,7 +433,7 @@ def _fit_ls(pha, binsize=1, min=20, line="MnKa", shift=False):
         return A * line_model(E, dE, width, line, shift)
     
     popt, pcov = curve_fit(model, bincenters, ngn,
-                        p0=(0, max(ngn), ngn.sum()/max(ngn)-6))
+                        p0=(0, max(ngn), float(ngn.sum())/max(ngn)-6))
 
     if len(pcov) == 1:
         raise Exception("Fitting failed for %s" % line)
@@ -467,7 +467,7 @@ def _fit_mle(pha, line="MnKa", shift=False):
     n, bins = histogram(pha)
     
     # Minimize (L-BFGS-B)
-    res = fmin_l_bfgs_b(lf, x0=(0, n.sum()/n.max()-6), approx_grad=True, epsilon=1e-6,
+    res = fmin_l_bfgs_b(lf, x0=(0, float(n.sum())/n.max()-6), approx_grad=True, epsilon=1e-6,
                     bounds=((-100,100), (0, n.sum()/n.max()*2)), disp=False)[0]
     
     # Calculate Hessian matrix for standard error
