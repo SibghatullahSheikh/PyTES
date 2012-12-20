@@ -2,11 +2,9 @@
 #
 # Mostly taken from: 10.1103/PhysRevA.56.4554
 
-import numpy as np
-
 ## Line Energy
 LE = {
-    "Mn": (5893.98, 6486.372)
+    "MnKa": 5893.98, "MnKb": 6486.372
 }
 
 ## Fine Structure

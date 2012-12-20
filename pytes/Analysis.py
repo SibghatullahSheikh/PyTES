@@ -129,16 +129,16 @@ def linearity_correction(pha, atom="Mn", sigma=1, full=False):
     """
     
     # Mn Ka/Kb Energy
-    if not LE.has_key(atom):
+    if not LE.has_key(atom+"Ka") or not LE.has_key(atom+"Kb"):
         raise ValueError("No data for %s" % atom)
     
-    Mn = np.asarray(LE[atom])
+    l = np.asarray((LE[atom+"Ka"], LE[atom+"Kb"]))
     
     # MnKa/MnKb PHA Center
     pha_center = np.array([ ka(pha, sigma=sigma).mean(), kb(pha, sigma=sigma).mean() ])
     
     # Fitting
-    (a, b), covt = curve_fit(lambda x, a, b: a*x**2 + b*x, Mn, pha_center)
+    (a, b), covt = curve_fit(lambda x, a, b: a*x**2 + b*x, l, pha_center)
     
     # Correction
     corrected_pha = (-b + np.sqrt(b**2+4*a*pha)) / (2*a)
