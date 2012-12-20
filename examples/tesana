@@ -97,10 +97,10 @@ def main(pulse, noise, cutoff=None, binsize=1, max_shift=10,
     lc_pha, (a, b) = Analysis.linearity_correction(oc_pha, sigma=sigma, full=True)
     print "Linearity correction with: PHA = %e * E^2 + %e * E" % (a, b)
     
-    # Spectrum
+    # Plot Spectrum
     if plotting:
         figure()
-        hist(lc_pha/1e3, bins=4096, histtype='stepfilled', color='y')
+        hist(lc_pha[lc_pha==lc_pha]/1e3, bins=4096, histtype='stepfilled', color='y')
         xlim(0, 7)
         xlabel('Energy\quad(keV)')
         ylabel('Count')
