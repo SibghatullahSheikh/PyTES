@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import norm, cauchy
-from pytes import Analysis, Pulse, Constants
+from pytes import Analysis, Constants
 
 def pulse(pha=1.0, tr=2e-6, tf=100e-6, points=1024, t=2e-3, duty=0.5, talign=0.0):
     """
